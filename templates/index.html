@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RabbitMQ</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <style>
+    :root {
+      --bg: #0e1016;
+      --surface: #181b26;
+      --surface2: #1f2333;
+      --border: #2a2f45;
+      --accent: #ff6b35;
+      --blue: #60a5fa;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #facc15;
+      --purple: #a78bfa;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --input: #12141d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ─── Topbar ─────────────────────────────────────────────────────────── */
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 16px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .brand { font-weight: 700; font-size: .92rem; white-space: nowrap; }
+    .brand em { color: var(--accent); font-style: normal; }
+    .sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
+    .lbl { font-size: .68rem; color: var(--muted); font-weight: 700;
+           letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
+    .tb-in {
+      background: var(--input); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text);
+      font-size: .8rem; padding: 0 9px; height: 30px; outline: none;
+      transition: border-color .15s;
+    }
+    .tb-in:focus { border-color: var(--accent); }
+    #ih { width: 125px; } #ip { width: 56px; }
+    #iu { width: 76px; } #iw { width: 76px; } #iv { width: 48px; }
+    .conn-btn {
+      height: 30px; padding: 0 13px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text);
+      font-size: .8rem; font-weight: 600; cursor: pointer;
+      transition: border-color .15s, color .15s; white-space: nowrap;
+    }
+    .conn-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted); flex-shrink: 0; transition: background .3s;
+    }
+    .dot.on  { background: var(--green); box-shadow: 0 0 5px var(--green); }
+    .dot.off { background: var(--red);   box-shadow: 0 0 5px var(--red); }
+
+    /* ─── Layout ─────────────────────────────────────────────────────────── */
+    .workspace {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ─── Sidebar ────────────────────────────────────────────────────────── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .sb-head {
+      padding: 10px 12px 6px;
+      font-size: .65rem; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .route-list { flex: 1; overflow-y: auto; padding: 4px; }
+    .rg-label {
+      font-size: .62rem; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); padding: 8px 8px 3px;
+    }
+    .ri {
+      padding: 6px 8px; border-radius: 6px; cursor: pointer;
+      border: 1px solid transparent;
+      transition: background .1s;
+    }
+    .ri:hover { background: var(--surface2); }
+    .ri.active { background: rgba(255,107,53,.08); border-color: rgba(255,107,53,.2); }
+    .ri-top { display: flex; align-items: center; gap: 6px; }
+    .rbadge {
+      font-size: .6rem; font-weight: 700;
+      padding: 1px 5px; border-radius: 3px;
+      letter-spacing: .03em; flex-shrink: 0;
+    }
+    .rb-pipeline { background: rgba(255,107,53,.15); color: var(--accent); }
+    .rb-chat     { background: rgba(96,165,250,.15);  color: var(--blue); }
+    .rb-logs     { background: rgba(250,204,21,.12);  color: var(--yellow); }
+    .ri-name { font-size: .78rem; font-family: 'Consolas', monospace; }
+    .ri-http { font-size: .67rem; color: var(--muted); margin-top: 1px; margin-left: 0px; }
+
+    /* ─── Main ───────────────────────────────────────────────────────────── */
+    .main-col {
+      display: flex; flex-direction: column;
+      overflow: hidden; min-height: 0;
+    }
+
+    /* ─── Request bar ────────────────────────────────────────────────────── */
+    .req-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 8px;
+      flex-shrink: 0;
+    }
+    .method-tag {
+      background: rgba(255,107,53,.12);
+      color: var(--accent);
+      border: 1px solid rgba(255,107,53,.25);
+      border-radius: 6px; font-size: .72rem; font-weight: 700;
+      padding: 0 11px; height: 36px;
+      display: flex; align-items: center;
+      letter-spacing: .06em; flex-shrink: 0;
+    }
+    .name-wrap {
+      flex: 1; background: var(--input);
+      border: 1px solid var(--border); border-radius: 7px;
+      display: flex; align-items: center;
+      transition: border-color .15s; overflow: hidden;
+    }
+    .name-wrap:focus-within { border-color: var(--accent); }
+    .q-tag {
+      padding: 0 10px; font-size: .75rem;
+      font-family: 'Consolas', monospace; color: var(--muted);
+      background: rgba(255,255,255,.03);
+      height: 36px; display: flex; align-items: center;
+      border-right: 1px solid var(--border);
+      white-space: nowrap; flex-shrink: 0;
+    }
+    #inp-name {
+      flex: 1; background: transparent; border: none; outline: none;
+      color: var(--text); font-size: .85rem;
+      font-family: 'Consolas', monospace;
+      padding: 0 11px; height: 36px;
+    }
+    #inp-name::placeholder { color: var(--muted); }
+    .http-eq {
+      font-size: .72rem; color: var(--muted);
+      white-space: nowrap; font-family: 'Consolas', monospace;
+      padding: 0 4px; flex-shrink: 0;
+    }
+    .rpc-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: .76rem; color: var(--muted);
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .toggle { position: relative; width: 30px; height: 16px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle .sl {
+      position: absolute; inset: 0;
+      background: var(--border); border-radius: 20px;
+      cursor: pointer; transition: background .2s;
+    }
+    .toggle .sl::before {
+      content: ''; position: absolute;
+      width: 10px; height: 10px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%; transition: transform .2s;
+    }
+    .toggle input:checked + .sl { background: var(--blue); }
+    .toggle input:checked + .sl::before { transform: translateX(14px); }
+    .to-wrap {
+      display: flex; align-items: center; gap: 5px;
+      font-size: .76rem; color: var(--muted); flex-shrink: 0;
+    }
+    .to-wrap input {
+      width: 48px; background: var(--input);
+      border: 1px solid var(--border); border-radius: 5px;
+      color: var(--text); font-size: .76rem;
+      padding: 3px 7px; outline: none; text-align: center;
+    }
+    .to-wrap input:focus { border-color: var(--accent); }
+    .send-btn {
+      height: 36px; padding: 0 18px;
+      background: linear-gradient(135deg, #ff6b35, #f7931e);
+      color: #fff; border: none; border-radius: 7px;
+      font-size: .85rem; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; gap: 6px;
+      transition: opacity .15s, transform .1s;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .send-btn:hover { opacity: .88; }
+    .send-btn:active { transform: scale(.97); }
+    .send-btn:disabled { opacity: .38; cursor: not-allowed; transform: none; }
+
+    /* ─── Captured vars bar ──────────────────────────────────────────────── */
+    .vars-bar {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 16px;
+      display: flex; align-items: center; gap: 8px;
+      min-height: 36px; flex-shrink: 0; flex-wrap: wrap;
+    }
+    .vars-label {
+      font-size: .65rem; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted); white-space: nowrap;
+    }
+    .var-chip {
+      display: flex; align-items: center; gap: 5px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 5px; padding: 2px 8px 2px 6px;
+      font-size: .73rem; cursor: pointer;
+      transition: border-color .15s;
+    }
+    .var-chip:hover { border-color: var(--blue); }
+    .var-chip .vc-key { color: var(--muted); }
+    .var-chip .vc-val {
+      color: var(--blue); font-family: 'Consolas', monospace;
+      max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .var-chip .vc-del {
+      color: var(--muted); font-size: .8rem; margin-left: 2px;
+      cursor: pointer; line-height: 1;
+    }
+    .var-chip .vc-del:hover { color: var(--red); }
+    .vars-empty { font-size: .72rem; color: var(--muted); font-style: italic; }
+
+    /* ─── Content panels ─────────────────────────────────────────────────── */
+    .panels {
+      flex: 1; display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden; min-height: 0;
+    }
+    .panel {
+      display: flex; flex-direction: column;
+      overflow: hidden; border-right: 1px solid var(--border);
+    }
+    .panel:last-child { border-right: none; }
+    .ph {
+      padding: 7px 12px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .ph-title {
+      font-size: .65rem; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+    }
+    .ph-acts { display: flex; gap: 5px; }
+    .mbtn {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--muted);
+      font-size: .68rem; font-weight: 600;
+      padding: 2px 8px; cursor: pointer;
+      transition: color .15s, border-color .15s;
+    }
+    .mbtn:hover { color: var(--text); border-color: var(--accent); }
+    .pbody { flex: 1; overflow: hidden; position: relative; }
+
+    textarea#data-body {
+      width: 100%; height: 100%;
+      background: var(--input); border: none; outline: none;
+      color: var(--text);
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: .82rem; line-height: 1.65;
+      padding: 12px; resize: none;
+    }
+
+    /* ─── Response area ──────────────────────────────────────────────────── */
+    #resp-area {
+      height: 100%; overflow-y: auto; padding: 12px;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: .8rem; line-height: 1.6;
+    }
+    .empty-st {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      height: 100%; gap: 8px; color: var(--muted);
+    }
+    .empty-st p { font-size: .78rem; }
+    .re { padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+    .re:last-child { border-bottom: none; }
+    .re-meta {
+      display: flex; align-items: center; gap: 7px;
+      margin-bottom: 6px; flex-wrap: wrap;
+    }
+    .re-ts   { color: var(--muted); font-size: .7rem; }
+    .re-ok   { color: var(--green); font-weight: 700; font-size: .72rem; }
+    .re-err  { color: var(--red);   font-weight: 700; font-size: .72rem; }
+    .re-name { color: #94a3b8; font-size: .76rem; }
+    .re-badge {
+      font-size: .6rem; font-weight: 700; letter-spacing: .05em;
+      padding: 1px 6px; border-radius: 3px;
+    }
+    .rb-rpc  { background: rgba(96,165,250,.15);  color: var(--blue);  border: 1px solid rgba(96,165,250,.25); }
+    .rb-fire { background: rgba(250,204,21,.1);   color: var(--yellow); border: 1px solid rgba(250,204,21,.2); }
+    .re-sec {
+      font-size: .62rem; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; margin: 6px 0 3px;
+    }
+    .sec-env   { color: var(--muted); }
+    .sec-reply { color: var(--blue); }
+    .sec-err   { color: var(--red); }
+    .re-block {
+      white-space: pre-wrap; word-break: break-all;
+      padding: 7px 10px; border-radius: 5px; font-size: .78rem;
+    }
+    .blk-env   { background: rgba(255,255,255,.02); color: #4b5563; border-left: 2px solid var(--border); }
+    .blk-reply { background: rgba(96,165,250,.05);  color: #93c5fd; border-left: 2px solid var(--blue); }
+    .blk-fire  { background: rgba(255,255,255,.02); color: #6b7280; border-left: 2px solid var(--border); }
+    .blk-err   { background: rgba(239,68,68,.05);   color: #fca5a5; border-left: 2px solid var(--red); }
+
+    /* captured value highlight in reply */
+    .cap-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(167,139,250,.12);
+      color: var(--purple); border: 1px solid rgba(167,139,250,.25);
+      border-radius: 4px; font-size: .68rem; font-weight: 600;
+      padding: 1px 7px; cursor: pointer; margin-top: 4px;
+      transition: background .15s;
+    }
+    .cap-btn:hover { background: rgba(167,139,250,.2); }
+
+    /* ─── Toast ──────────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 16px; right: 16px;
+      padding: 8px 14px; border-radius: 7px;
+      font-size: .82rem; font-weight: 600;
+      z-index: 999; opacity: 0; transform: translateY(6px);
+      transition: opacity .2s, transform .2s; pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.ok  { background: #14532d; border: 1px solid var(--green); color: #bbf7d0; }
+    #toast.err { background: #7f1d1d; border: 1px solid var(--red);   color: #fecaca; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Builder form ───────────────────────────────────────────────────────── */
+    #builder-form {
+      overflow-y: auto; height: 100%; padding: 12px;
+      background: var(--input);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .bf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .bf-label {
+      font-size: .62rem; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 3px; display: block;
+    }
+    .bf-input {
+      width: 100%; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 5px;
+      color: var(--text); font-size: .78rem;
+      padding: 4px 8px; outline: none; height: 28px;
+      font-family: 'Consolas', monospace;
+      transition: border-color .15s;
+    }
+    .bf-input:focus { border-color: var(--accent); }
+    .bf-ta {
+      width: 100%; 
+      min-height: 55px;
+      background: var(--surface);
+      border: 1px solid var(--border); border-radius: 5px;
+      color: var(--text); font-size: .85rem;
+      padding: 8px 10px; 
+      outline: none; 
+      resize: vertical;
+      font-family: 'Consolas', monospace;
+      transition: border-color .15s;
+      box-sizing: border-box;
+      line-height: 1.45;
+    }
+    .bf-ta:focus { border-color: var(--accent); }
+    .bf-sec-row {
+      display: flex; align-items: center; gap: 6px;
+      border-top: 1px solid var(--border); padding-top: 8px;
+    }
+    .bf-sec-title {
+      font-size: .62rem; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+    }
+    .bf-mode-btn {
+      font-size: .6rem; font-weight: 700; padding: 1px 6px; border-radius: 3px;
+      border: 1px solid var(--border); background: var(--surface2); color: var(--muted);
+      cursor: pointer; transition: color .12s, border-color .12s, background .12s;
+    }
+    .bf-mode-btn.active {
+      color: var(--blue); border-color: rgba(96,165,250,.35);
+      background: rgba(96,165,250,.08);
+    }
+    .bf-msg-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 5px; padding: 6px 8px;
+    }
+    .bf-msg-head { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
+    .bf-msg-num  { font-size: .65rem; color: var(--muted); font-family: 'Consolas', monospace; }
+    .bf-role-sel {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text); font-size: .72rem;
+      padding: 2px 5px; outline: none; cursor: pointer;
+      font-family: 'Consolas', monospace;
+    }
+    .bf-del-btn {
+      margin-left: auto; background: none; border: none;
+      color: var(--muted); cursor: pointer; font-size: .72rem;
+      padding: 1px 4px; border-radius: 3px; line-height: 1;
+      transition: color .12s;
+    }
+    .bf-del-btn:hover { color: var(--red); }
+    .bf-add-btn {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--muted);
+      font-size: .73rem; font-weight: 600; padding: 5px 10px;
+      cursor: pointer; transition: color .12s, border-color .12s;
+    }
+    .bf-add-btn:hover { color: var(--text); border-color: var(--accent); }
+
+    /* ─── Env prefix selector ────────────────────────────────────────────── */
+    .env-sel {
+      display: flex;
+      background: var(--input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .env-opt {
+      padding: 0 10px; height: 30px;
+      background: none; border: none;
+      border-right: 1px solid var(--border);
+      color: var(--muted);
+      font-size: .73rem; font-weight: 600;
+      cursor: pointer; transition: background .12s, color .12s;
+      white-space: nowrap;
+    }
+    .env-opt:last-child { border-right: none; }
+    .env-opt:hover { background: var(--surface2); color: var(--text); }
+    .env-opt.active { background: var(--surface2); }
+    .env-opt[data-prefix=""].active    { color: var(--muted); }
+    .env-opt[data-prefix="local"].active { color: var(--blue); }
+    .env-opt[data-prefix="test"].active  { color: var(--yellow); }
+    .env-opt[data-prefix="rel"].active   { color: var(--purple); }
+    .env-opt[data-prefix="prod"].active  { color: var(--green); }
+
+    /* ─── Mermaid modal ──────────────────────────────────────────────────── */
+    .mmr-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.8);
+      display: none; z-index: 200;
+    }
+    .mmr-overlay.open { display: block; }
+
+    /* Tam ekran diagram alanı */
+    .mmr-stage {
+      position: absolute; inset: 0;
+      background: #f8fafc;
+      cursor: grab; user-select: none;
+      overflow: hidden;
+    }
+    .mmr-stage.dragging { cursor: grabbing; }
+
+    .mmr-canvas {
+      position: absolute; inset: 0;
+      overflow: hidden;
+    }
+    #mmr-diagram {
+      position: absolute;
+      top: 0; left: 0;
+    }
+    #mmr-diagram svg {
+      display: block;
+      max-width: none !important;
+      height: auto;
+    }
+    .mmr-empty {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; pointer-events: none;
+      color: #9ca3af; font-family: 'Segoe UI', sans-serif;
+      font-size: .85rem;
+    }
+    .mmr-empty svg { opacity: .2; }
+    .mmr-err {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      color: var(--red); font-family: 'Consolas', monospace;
+      font-size: .78rem; background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.2);
+      border-radius: 6px; padding: 10px 14px;
+      white-space: pre-wrap; word-break: break-all;
+      max-width: 520px;
+    }
+
+    /* Üst çubuk */
+    .mmr-topbar {
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 46px;
+      background: rgba(15,18,30,.88);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center;
+      padding: 0 12px; gap: 8px;
+      z-index: 20; pointer-events: auto;
+    }
+    .mmr-tb-title {
+      font-size: .7rem; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--purple); flex: 1;
+    }
+    .mmr-tb-btn {
+      height: 28px; padding: 0 12px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 5px; color: #cbd5e1;
+      font-size: .72rem; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; gap: 5px;
+      transition: background .12s, border-color .12s, color .12s;
+      white-space: nowrap;
+    }
+    .mmr-tb-btn:hover { background: rgba(255,255,255,.12); color: #fff; border-color: rgba(255,255,255,.25); }
+    .mmr-tb-btn.svg-btn:hover { border-color: rgba(96,165,250,.5); color: var(--blue); }
+    .mmr-tb-btn.png-btn:hover { border-color: rgba(34,197,94,.5); color: var(--green); }
+    .mmr-tb-btn.close-btn:hover { border-color: rgba(239,68,68,.5); color: var(--red); }
+    .mmr-tb-sep { width: 1px; height: 18px; background: rgba(255,255,255,.1); }
+
+    /* Zoom bar */
+    .mmr-zoom-bar {
+      position: absolute; bottom: 14px; right: 14px;
+      display: flex; align-items: center; gap: 4px;
+      background: rgba(15,18,30,.85);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px; padding: 4px 6px;
+      backdrop-filter: blur(6px);
+      z-index: 20; pointer-events: auto;
+    }
+    .mmr-zoom-bar button {
+      background: none; border: none;
+      color: #94a3b8; font-size: .88rem; font-weight: 700;
+      width: 26px; height: 26px; border-radius: 5px;
+      cursor: pointer; line-height: 1;
+      transition: background .1s, color .1s;
+    }
+    .mmr-zoom-bar button:hover { background: rgba(255,255,255,.1); color: #fff; }
+    .mmr-zoom-pct {
+      font-size: .68rem; color: #64748b;
+      font-family: 'Consolas', monospace;
+      min-width: 38px; text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Topbar ─────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <div class="brand">my<em>soly</em></div>
+  <div class="sep"></div>
+  <span class="lbl">Host</span>
+  <input id="ih" class="tb-in" value="{{ config.host }}"/>
+  <input id="ip" class="tb-in" type="number" value="{{ config.port }}"/>
+  <div class="sep"></div>
+  <span class="lbl">Auth</span>
+  <input id="iu" class="tb-in" value="{{ config.user }}"/>
+  <input id="iw" class="tb-in" type="password" value="{{ config.password }}" placeholder="password"/>
+  <div class="sep"></div>
+  <span class="lbl">VHost</span>
+  <input id="iv" class="tb-in" value="{{ config.vhost }}"/>
+  <button class="conn-btn" onclick="connect()">Connect</button>
+  <div class="dot" id="dot"></div>
+  <div class="sep"></div>
+  <span class="lbl">Env</span>
+  <div class="env-sel">
+    <button class="env-opt active" data-prefix=""      onclick="setPrefix(this)">— none</button>
+    <button class="env-opt"        data-prefix="local" onclick="setPrefix(this)">local</button>
+    <button class="env-opt"        data-prefix="test"  onclick="setPrefix(this)">test</button>
+    <button class="env-opt"        data-prefix="rel"   onclick="setPrefix(this)">rel</button>
+    <button class="env-opt"        data-prefix="prod"  onclick="setPrefix(this)">prod</button>
+  </div>
+  <div class="sep"></div>
+  <button class="conn-btn" onclick="mermaidOpen()" style="color:var(--purple);border-color:rgba(167,139,250,.35)">
+    ⬡ Mermaid
+  </button>
+</div>
+
+<!-- ─── Workspace ─────────────────────────────────────────────────────────── -->
+<div class="workspace">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sb-head">Routes</div>
+    <div class="route-list">
+      {% for queue in ['pipeline', 'chat', 'logs'] %}
+      <div class="rg-label">{{ queue }}</div>
+      {% for name, r in routes.items() %}{% if r.queue == queue %}
+      <div class="ri" id="ri-{{ name|replace('.', '-') }}" onclick="selectRoute('{{ name }}')">
+        <div class="ri-top">
+          <span class="rbadge rb-{{ queue }}">{{ r.pattern }}</span>
+          <span class="ri-name">{{ name }}</span>
+        </div>
+        <div class="ri-http">{{ r.http }}</div>
+      </div>
+      {% endif %}{% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main-col">
+
+    <!-- Request bar -->
+    <div class="req-bar">
+      <div class="method-tag">SEND</div>
+      <div class="name-wrap">
+        <div class="q-tag" id="q-tag">pipeline</div>
+        <input id="inp-name" value="pipeline.run"
+               placeholder="pipeline.run" oninput="onNameInput(this.value)"/>
+      </div>
+      <span class="http-eq" id="http-eq">≡ POST /run</span>
+      <div class="rpc-row">
+        <label class="toggle">
+          <input type="checkbox" id="opt-rpc" checked onchange="onRpcToggle()"/>
+          <span class="sl"></span>
+        </label>
+        Wait for reply
+      </div>
+      <div class="to-wrap" id="to-wrap">
+        <input id="opt-timeout" type="number" value="{{ config.timeout }}" min="1" max="300"/>
+        <span>s</span>
+      </div>
+      <button class="send-btn" id="send-btn" onclick="sendMsg()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+        Send
+      </button>
+    </div>
+
+    <!-- Captured vars -->
+    <div class="vars-bar" id="vars-bar">
+      <span class="vars-label">Captured</span>
+      <span class="vars-empty" id="vars-empty">No captured values yet — session_id, chat_name, account_id… appear after a successful call</span>
+    </div>
+
+    <!-- Panels -->
+    <div class="panels">
+
+      <!-- Data body -->
+      <div class="panel">
+        <div class="ph">
+          <span class="ph-title">
+            data
+            <span style="color:var(--border);font-weight:400;font-size:.6rem;">
+              → { "pattern": "…", "data": ▶ }
+            </span>
+          </span>
+          <div class="ph-acts">
+            <button class="mbtn" id="bld-toggle" onclick="bldToggle()">Builder</button>
+            <button class="mbtn" onclick="fmtJSON()">Format</button>
+            <button class="mbtn" onclick="bldClear()">Clear</button>
+          </div>
+        </div>
+        <div class="pbody">
+          <textarea id="data-body" spellcheck="false" placeholder="{}"></textarea>
+          <div id="builder-form" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- Response -->
+      <div class="panel">
+        <div class="ph">
+          <span class="ph-title">Response</span>
+          <div class="ph-acts">
+            <button class="mbtn" onclick="clearResp()">Clear</button>
+          </div>
+        </div>
+        <div class="pbody">
+          <div id="resp-area">
+            <div class="empty-st" id="empty-st">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="1.5" style="opacity:.25">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+              <p>Send a message to see the response</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ─── Mermaid modal ──────────────────────────────────────────────────────── -->
+<textarea id="mmr-input" style="display:none"></textarea>
+<div class="mmr-overlay" id="mmr-overlay">
+  <div class="mmr-stage" id="mmr-right">
+
+    <!-- Üst çubuk -->
+    <div class="mmr-topbar">
+      <span class="mmr-tb-title">⬡ Mermaid Viewer</span>
+      <button class="mmr-tb-btn svg-btn" onclick="mmrExportSVG()" title="SVG olarak indir">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        SVG
+      </button>
+      <button class="mmr-tb-btn png-btn" onclick="mmrExportPNG()" title="PNG olarak indir">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        PNG
+      </button>
+      <div class="mmr-tb-sep"></div>
+      <button class="mmr-tb-btn close-btn" onclick="mermaidClose()" title="Kapat (Esc)">✕ Kapat</button>
+    </div>
+
+    <!-- Diagram canvas -->
+    <div class="mmr-canvas" id="mmr-canvas" style="top:46px">
+      <div id="mmr-diagram"></div>
+    </div>
+
+    <div class="mmr-empty" id="mmr-empty" style="top:46px">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.2">
+        <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+        <line x1="12" y1="2"  x2="12" y2="22"/>
+        <line x1="2"  y1="8.5"  x2="22" y2="8.5"/>
+        <line x1="2"  y1="15.5" x2="22" y2="15.5"/>
+      </svg>
+      <p>Response'da ⬡ Open in Mermaid butonuna tıklayın</p>
+    </div>
+
+    <!-- Zoom bar -->
+    <div class="mmr-zoom-bar">
+      <button onclick="mmrZoom(-0.1,null,null)" title="Uzaklaştır">−</button>
+      <span class="mmr-zoom-pct" id="mmr-zoom-pct">100%</span>
+      <button onclick="mmrZoom(+0.1,null,null)" title="Yakınlaştır">+</button>
+      <button onclick="mmrFit()" title="Sığdır (F)">⊡</button>
+      <button onclick="mmrResetView()" title="Sıfırla">↺</button>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ─── Route metadata ───────────────────────────────────────────────────────
+  const ROUTES = {{ routes | tojson }};
+  let ENV_PREFIX = '';
+
+  // Load initial env_prefix from server and activate matching button
+  fetch('/api/config').then(r => r.json()).then(d => {
+    const pfx = d.env_prefix || '';
+    if (pfx) _activatePrefix(pfx);
+  }).catch(() => {});
+
+  function setPrefix(btn) {
+    ENV_PREFIX = btn.dataset.prefix;
+    _activatePrefix(ENV_PREFIX);
+    onNameInput(document.getElementById('inp-name').value);
+  }
+
+  function _activatePrefix(pfx) {
+    ENV_PREFIX = pfx;
+    document.querySelectorAll('.env-opt').forEach(b => {
+      b.classList.toggle('active', b.dataset.prefix === pfx);
+    });
+  }
+
+  // ─── Captured variables store ─────────────────────────────────────────────
+  const captured = {};    // { key: value }
+
+  const CAPTURE_KEYS = ['session_id', 'chat_name', 'account_id', 'group_id', 'prod_name', 'handler_ref', 'pipeline'];
+
+  function captureFromPayload(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    // Legacy: engine_id → session_id
+    if (payload.engine_id != null && payload.session_id == null) {
+      payload = { ...payload, session_id: payload.engine_id };
+    }
+    let changed = false;
+    CAPTURE_KEYS.forEach(k => {
+      if (payload[k] !== undefined && payload[k] !== '' && payload[k] !== null) {
+        captured[k] = payload[k];
+        changed = true;
+      }
+    });
+    // Also recurse one level
+    Object.values(payload).forEach(v => {
+      if (v && typeof v === 'object' && !Array.isArray(v)) {
+        CAPTURE_KEYS.forEach(k => {
+          if (v[k] !== undefined && v[k] !== '' && v[k] !== null) {
+            captured[k] = v[k];
+            changed = true;
+          }
+        });
+      }
+    });
+    if (changed) renderVars();
+  }
+
+  function renderVars() {
+    const bar = document.getElementById('vars-bar');
+    const empty = document.getElementById('vars-empty');
+    // Remove old chips
+    bar.querySelectorAll('.var-chip').forEach(c => c.remove());
+    const keys = Object.keys(captured);
+    if (empty) empty.style.display = keys.length ? 'none' : '';
+    keys.forEach(k => {
+      const chip = document.createElement('div');
+      chip.className = 'var-chip';
+      chip.title = `Click to inject "${k}" into data body`;
+      chip.innerHTML = `
+        <span class="vc-key">${k}:</span>
+        <span class="vc-val">${esc(String(captured[k]))}</span>
+        <span class="vc-del" title="Remove" onclick="event.stopPropagation();deleteVar('${k}')">✕</span>
+      `;
+      chip.addEventListener('click', () => injectVar(k));
+      bar.appendChild(chip);
+    });
+  }
+
+  function deleteVar(k) { delete captured[k]; renderVars(); }
+
+  function injectVar(k) {
+    const ta = document.getElementById('data-body');
+    let obj = {};
+    try { obj = JSON.parse(ta.value || '{}'); } catch {}
+    obj[k] = captured[k];
+    ta.value = JSON.stringify(obj, null, 2);
+    toast(`"${k}" injected`, 'ok');
+    if (BLD.open) { bldFromObj(obj); bldRender(); }
+  }
+
+  // ─── Utils ────────────────────────────────────────────────────────────────
+  const ts  = () => new Date().toLocaleTimeString('en-GB', { hour12: false });
+  const esc = s  => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const fmt = v  => typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v);
+
+  function toast(msg, type='ok') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = `show ${type}`;
+    setTimeout(() => t.className = '', 2600);
+  }
+
+  // ─── Sidebar ──────────────────────────────────────────────────────────────
+  function selectRoute(name) {
+    document.querySelectorAll('.ri').forEach(e => e.classList.remove('active'));
+    const el = document.getElementById('ri-' + name.replace(/\./g,'-'));
+    if (el) el.classList.add('active');
+
+    const r = ROUTES[name];
+    if (!r) return;
+    document.getElementById('inp-name').value = name;
+    document.getElementById('q-tag').textContent = ENV_PREFIX ? `${ENV_PREFIX}_${r.queue}` : r.queue;
+    document.getElementById('http-eq').textContent = '≡ ' + r.http;
+
+    // Fill template, injecting captured values where key matches
+    const tpl = JSON.parse(JSON.stringify(r.template));
+    Object.keys(tpl).forEach(k => {
+      if ((tpl[k] === '' || tpl[k] === null) && captured[k] !== undefined) {
+        tpl[k] = captured[k];
+      }
+    });
+    document.getElementById('data-body').value = JSON.stringify(tpl, null, 2);
+    if (BLD.open) { bldFromObj(tpl); bldRender(); }
+  }
+
+  function onNameInput(val) {
+    const r = ROUTES[val];
+    const baseQ = r ? r.queue : (val.includes('.') ? val.split('.')[0] : val || '—');
+    const q = ENV_PREFIX ? `${ENV_PREFIX}_${baseQ}` : baseQ;
+    document.getElementById('q-tag').textContent = q;
+    document.getElementById('http-eq').textContent = r ? '≡ ' + r.http : '';
+    document.querySelectorAll('.ri').forEach(e => e.classList.remove('active'));
+    if (r) {
+      const el = document.getElementById('ri-' + val.replace(/\./g,'-'));
+      if (el) el.classList.add('active');
+    }
+  }
+
+  function onRpcToggle() {
+    const on = document.getElementById('opt-rpc').checked;
+    const tw = document.getElementById('to-wrap');
+    tw.style.opacity = on ? '1' : '.3';
+    tw.style.pointerEvents = on ? '' : 'none';
+  }
+
+  // ─── Connect ──────────────────────────────────────────────────────────────
+  async function connect() {
+    await fetch('/api/config', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        host: document.getElementById('ih').value,
+        port: +document.getElementById('ip').value,
+        user: document.getElementById('iu').value,
+        password: document.getElementById('iw').value,
+        vhost: document.getElementById('iv').value,
+      }),
+    }).catch(()=>{});
+    pingRabbitMQ();
+  }
+
+  async function pingRabbitMQ() {
+    const dot = document.getElementById('dot');
+    dot.className = 'dot';
+    try {
+      const r = await fetch('/api/ping');
+      if (r.ok) {
+        dot.className = 'dot on';
+        const d = await r.json();
+        addResp({ ok:true, type:'ping', name:'connection', reply: d.dsn });
+      } else {
+        dot.className = 'dot off';
+        addResp({ ok:false, type:'ping', name:'connection', error: (await r.json()).detail });
+      }
+    } catch(e) { dot.className = 'dot off'; }
+  }
+
+  // ─── Send ─────────────────────────────────────────────────────────────────
+  async function sendMsg() {
+    const btn  = document.getElementById('send-btn');
+    const name = document.getElementById('inp-name').value.trim();
+    const rpc  = document.getElementById('opt-rpc').checked;
+    const tout = +document.getElementById('opt-timeout').value || 30;
+
+    let data;
+    try { data = JSON.parse(document.getElementById('data-body').value || '{}'); }
+    catch { toast('data alanı geçerli JSON değil', 'err'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2.5"
+      style="animation:spin .7s linear infinite">
+      <polyline points="23 4 23 10 17 10"/>
+      <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+    </svg> ${rpc ? 'Waiting…' : 'Sending…'}`;
+
+    try {
+      const r = await fetch('/api/send', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ name, data, rpc, timeout: tout, env_prefix: ENV_PREFIX }),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        toast(rpc ? 'Reply received' : `Sent — ${d.bytes ?? '?'} bytes`);
+        addResp({ ok:true, type: rpc?'rpc':'fire', name,
+                  queue: d.queue, correlationId: d.correlation_id,
+                  envelope: d.envelope_sent, reply: d.reply_raw, replyRaw: d.reply_raw, bytes: d.bytes });
+        if (d.reply) captureFromPayload(d.reply);
+      } else {
+        const errDetail = d.detail;
+        toast(typeof errDetail === 'string' ? errDetail : (errDetail?.message ?? 'Error'), 'err');
+        addResp({ ok:false, type: rpc?'rpc':'fire', name, queue: d.queue,
+                  envelope: d.envelope_sent ?? {pattern:'…',data}, error: errDetail });
+      }
+    } catch(e) {
+      toast(String(e), 'err');
+      addResp({ ok:false, type:'rpc', name, error: String(e) });
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2.5">
+        <line x1="22" y1="2" x2="11" y2="13"/>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+      </svg> Send`;
+    }
+  }
+
+  // ─── Response renderer ────────────────────────────────────────────────────
+  let hasResp = false;
+
+  function addResp({ ok, type, name, queue, correlationId, envelope, reply, replyRaw, error, bytes }) {
+    const area = document.getElementById('resp-area');
+    document.getElementById('empty-st')?.remove();
+    hasResp = true;
+
+    const isPing = type === 'ping';
+    const isRpc  = type === 'rpc';
+    const badge  = isPing ? '' :
+      `<span class="re-badge ${isRpc?'rb-rpc':'rb-fire'}">${isRpc?'RPC':'FIRE'}</span>`;
+
+    let body = '';
+
+    if (!ok) {
+      const es = typeof error === 'object' ? fmt(error) : String(error ?? 'Unknown error');
+      body = `<div class="re-sec sec-err">Error</div>
+              <pre class="re-block blk-err">${esc(es)}</pre>`;
+      if (envelope) {
+        body = `<div class="re-sec sec-env">Envelope sent</div>
+                <pre class="re-block blk-env">${esc(fmt(envelope))}</pre>` + body;
+      }
+    } else if (isPing) {
+      body = `<pre class="re-block blk-reply">${esc(String(reply))}</pre>`;
+    } else if (isRpc) {
+      const replyStr = reply !== undefined ? fmt(reply) : '(empty)';
+      // Find captured keys in reply to show capture buttons
+      let capBtns = '';
+      if (reply && typeof reply === 'object') {
+        CAPTURE_KEYS.forEach(k => {
+          const v = reply[k];
+          if (v !== undefined && v !== null && v !== '') {
+            const js = JSON.stringify(v);
+            capBtns += `<button class="cap-btn" onclick="captured['${k}']=${js};renderVars();toast('Captured ${k}')">
+              ＋ Capture ${k}
+            </button> `;
+          }
+        });
+      }
+      const corrTag = correlationId
+        ? `<span style="color:var(--muted);font-size:.65rem;font-family:'Consolas',monospace"> · corr: ${esc(correlationId.slice(0,8))}…</span>`
+        : '';
+
+      // Mermaid alanı varsa buton göster
+      const _mmrIdx = _mmrCache.push(reply) - 1;
+      const mermaidBtn = _hasMermaid(reply)
+        ? `<button class="cap-btn" style="border-color:rgba(167,139,250,.4);color:var(--purple)"
+             onclick="openMermaidWith(_mmrCache[${_mmrIdx}])">
+             ⬡ Open in Mermaid
+           </button>`
+        : '';
+
+      // Markdown içeriği varsa buton göster
+      const _mdFound = _findMarkdown(reply);
+      let markdownBtn = '';
+      if (_mdFound) {
+        const _mdIdx = _mdCache.push(_mdFound) - 1;
+        markdownBtn = `<button class="cap-btn" style="border-color:rgba(96,165,250,.4);color:var(--blue)"
+             onclick="openMarkdownWith(_mdCache[${_mdIdx}])">
+             📝 View as Markdown
+           </button>`;
+      }
+
+      body = `
+        <div class="re-sec sec-env">Envelope sent → queue: <strong style="color:var(--text)">${esc(queue||'?')}</strong>${corrTag}</div>
+        <pre class="re-block blk-env">${esc(fmt(envelope))}</pre>
+        <div class="re-sec sec-reply">Reply · payload</div>
+        <pre class="re-block blk-reply">${esc(replyStr)}</pre>
+        ${capBtns}${mermaidBtn}${markdownBtn}`;
+    } else {
+      body = `<div class="re-sec sec-env">Sent → queue: <strong style="color:var(--text)">${esc(queue||'?')}</strong> · ${bytes ?? '?'} bytes</div>
+              <pre class="re-block blk-fire">${esc(fmt(envelope))}</pre>`;
+    }
+
+    const entry = document.createElement('div');
+    entry.className = 're';
+    entry.innerHTML = `
+      <div class="re-meta">
+        <span class="re-ts">${ts()}</span>
+        <span class="${ok?'re-ok':'re-err'}">${ok?'● OK':'● ERROR'}</span>
+        ${badge}
+        <span class="re-name">${esc(name)}</span>
+      </div>
+      ${body}`;
+    area.appendChild(entry);
+    area.scrollTop = area.scrollHeight;
+  }
+
+  function clearResp() {
+    document.getElementById('resp-area').innerHTML =
+      `<div class="empty-st" id="empty-st">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.5" style="opacity:.25">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+        <p>Send a message to see the response</p>
+      </div>`;
+    hasResp = false;
+  }
+
+  function fmtJSON() {
+    const el = document.getElementById('data-body');
+    try { el.value = JSON.stringify(JSON.parse(el.value), null, 2); }
+    catch { toast('Geçersiz JSON', 'err'); }
+  }
+
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') sendMsg();
+  });
+
+  // ── Builder ────────────────────────────────────────────────────────────────
+  const BLD = {
+    open: false, msgMode: 'array', msgStr: '', _nextId: 2,
+    msgs: [{ id: 1, role: 'user', content: '' }],
+    account_id: '', chat_name: '', group_id: '', prod_name: '', session_id: '', vars: '{}',
+  };
+
+  function bldToggle() {
+    BLD.open = !BLD.open;
+    const ta  = document.getElementById('data-body');
+    const frm = document.getElementById('builder-form');
+    const btn = document.getElementById('bld-toggle');
+    if (BLD.open) {
+      try { bldFromObj(JSON.parse(ta.value || '{}')); } catch {}
+      ta.style.display  = 'none';
+      frm.style.display = '';
+      btn.style.color        = 'var(--accent)';
+      btn.style.borderColor  = 'rgba(255,107,53,.4)';
+      bldRender();
+    } else {
+      ta.style.display  = '';
+      frm.style.display = 'none';
+      btn.style.color       = '';
+      btn.style.borderColor = '';
+    }
+  }
+
+  function bldFromObj(obj) {
+    ['account_id','chat_name','group_id','prod_name','session_id'].forEach(k => {
+      BLD[k] = (obj[k] != null) ? String(obj[k]) : '';
+    });
+    BLD.vars = (obj.vars && typeof obj.vars === 'object')
+      ? JSON.stringify(obj.vars) : (obj.vars || '{}');
+    if (typeof obj.message === 'string') {
+      BLD.msgMode = 'string'; BLD.msgStr = obj.message;
+    } else if (Array.isArray(obj.message)) {
+      BLD.msgMode = 'array';
+      BLD.msgs = obj.message.map((m, i) => ({ id: i + 1, role: m.role || 'user', content: m.content || '' }));
+      BLD._nextId = BLD.msgs.length + 1;
+    }
+  }
+
+  function bldToObj() {
+    let vars = {};
+    try { vars = JSON.parse(BLD.vars || '{}'); } catch {}
+    return {
+      account_id: BLD.account_id,
+      chat_name:  BLD.chat_name,
+      group_id:   BLD.group_id,
+      message:    BLD.msgMode === 'string'
+                    ? BLD.msgStr
+                    : BLD.msgs.map(m => ({ role: m.role, content: m.content })),
+      prod_name:  BLD.prod_name,
+      session_id: BLD.session_id.trim() === '' ? null : BLD.session_id,
+      vars,
+    };
+  }
+
+  function bldSync() {
+    document.getElementById('data-body').value = JSON.stringify(bldToObj(), null, 2);
+  }
+
+  function bldRender() {
+    const frm = document.getElementById('builder-form');
+    const msgsHtml = BLD.msgs.map((m, i) => `
+      <div class="bf-msg-item">
+        <div class="bf-msg-head">
+          <span class="bf-msg-num">#${i + 1}</span>
+          <select class="bf-role-sel" onchange="bldMsgField(${m.id},'role',this.value)">
+            <option value="user"      ${m.role==='user'      ?'selected':''}>user</option>
+            <option value="assistant" ${m.role==='assistant' ?'selected':''}>assistant</option>
+            <option value="system"    ${m.role==='system'    ?'selected':''}>system</option>
+          </select>
+          <button class="bf-del-btn" onclick="bldDelMsg(${m.id})" title="Sil">✕</button>
+        </div>
+        <textarea class="bf-ta" rows="2" placeholder="content…"
+          oninput="bldMsgField(${m.id},'content',this.value)">${esc(m.content)}</textarea>
+      </div>`).join('');
+
+    frm.innerHTML = `
+      <div class="bf-grid">
+        <div>
+          <label class="bf-label">account_id</label>
+          <input class="bf-input" value="${esc(BLD.account_id)}" placeholder="account-1"
+            oninput="BLD.account_id=this.value;bldSync()"/>
+        </div>
+        <div>
+          <label class="bf-label">chat_name</label>
+          <input class="bf-input" value="${esc(BLD.chat_name)}" placeholder="chat_name"
+            oninput="BLD.chat_name=this.value;bldSync()"/>
+        </div>
+        <div>
+          <label class="bf-label">group_id</label>
+          <input class="bf-input" value="${esc(BLD.group_id)}" placeholder="group-1"
+            oninput="BLD.group_id=this.value;bldSync()"/>
+        </div>
+        <div>
+          <label class="bf-label">prod_name</label>
+          <input class="bf-input" value="${esc(BLD.prod_name)}" placeholder="prod_name"
+            oninput="BLD.prod_name=this.value;bldSync()"/>
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="bf-label">session_id
+            <span style="font-weight:400;letter-spacing:0;text-transform:none;font-size:.58rem">(boş = null)</span>
+          </label>
+          <input class="bf-input" value="${esc(BLD.session_id)}" placeholder="boş bırak = null"
+            oninput="BLD.session_id=this.value;bldSync()"/>
+        </div>
+        <div style="grid-column:1/-1">
+          <label class="bf-label">vars (JSON)</label>
+          <textarea class="bf-ta" rows="2" placeholder='{"scope":"about_app"}'
+            oninput="BLD.vars=this.value;bldSync()">${esc(BLD.vars)}</textarea>
+        </div>
+      </div>
+      <div class="bf-sec-row">
+        <span class="bf-sec-title">message</span>
+        <button class="bf-mode-btn ${BLD.msgMode==='array'?'active':''}" onclick="bldSetMode('array')">array</button>
+        <button class="bf-mode-btn ${BLD.msgMode==='string'?'active':''}" onclick="bldSetMode('string')">string</button>
+      </div>
+      ${BLD.msgMode === 'string' ? `
+        <textarea class="bf-ta" rows="3" placeholder="Mesaj metni…"
+          oninput="BLD.msgStr=this.value;bldSync()">${esc(BLD.msgStr)}</textarea>
+      ` : `
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${msgsHtml}
+          <button class="bf-add-btn" onclick="bldAddMsg()">+ Mesaj Ekle</button>
+        </div>
+      `}`;
+  }
+
+  function bldSetMode(mode) { BLD.msgMode = mode; bldRender(); bldSync(); }
+  function bldAddMsg()      { BLD.msgs.push({ id: BLD._nextId++, role: 'user', content: '' }); bldRender(); bldSync(); }
+  function bldDelMsg(id)    { BLD.msgs = BLD.msgs.filter(m => m.id !== id); bldRender(); bldSync(); }
+  function bldMsgField(id, field, val) {
+    const m = BLD.msgs.find(x => x.id === id);
+    if (m) { m[field] = val; bldSync(); }
+  }
+
+  function bldClear() {
+    if (BLD.open) {
+      Object.assign(BLD, {
+        account_id:'', chat_name:'', group_id:'', prod_name:'',
+        session_id:'', vars:'{}', msgMode:'array', msgStr:'',
+        msgs:[], _nextId:1,
+      });
+      bldRender(); bldSync();
+    } else {
+      document.getElementById('data-body').value = '{}';
+    }
+  }
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
+  selectRoute('pipeline.run');
+  pingRabbitMQ();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
+
+  // Reply cache — inline onclick'te güvenli referans için
+  const _mmrCache = [];
+
+  function _hasMermaid(obj) {
+    if (!obj || typeof obj !== 'object') return false;
+    if (typeof obj.mermaid === 'string') return true;
+    return Object.values(obj).some(_hasMermaid);
+  }
+
+  // ─── Markdown viewer ───────────────────────────────────────────────────────
+  const _mdCache = [];
+
+  function _looksLikeMarkdown(s) {
+    if (typeof s !== 'string' || s.trim().length < 20) return false;
+    return /```|^#{1,6}\s|\*\*[^*]+\*\*|^\s*[-*]\s+\S|^\s*\d+\.\s+\S|^>\s/m.test(s);
+  }
+
+  // reply objesi içinde recursive olarak markdown'a benzeyen ilk string'i bul
+  function _findMarkdown(obj, _depth) {
+    _depth = _depth || 0;
+    if (_depth > 6) return null;
+    if (typeof obj === 'string') return _looksLikeMarkdown(obj) ? obj : null;
+    if (!obj || typeof obj !== 'object') return null;
+    for (const [k, v] of Object.entries(obj)) {
+      if (k === 'mermaid') continue;
+      const found = _findMarkdown(v, _depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function openMarkdownWith(mdText) {
+    const html = `<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<title>Markdown Önizleme — mysoly</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"><\/script>
+<style>
+  :root { --bg:#0e1016; --surface:#181b26; --border:#2a2f45; --text:#e2e8f0; --muted:#64748b; --accent:#ff6b35; --blue:#60a5fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; }
+  .mdv-bar {
+    position:sticky; top:0; z-index:5;
+    display:flex; align-items:center; gap:8px;
+    background:var(--surface); border-bottom:1px solid var(--border);
+    padding:10px 20px;
+  }
+  .mdv-title { font-size:.7rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--blue); flex:1; }
+  .mdv-btn {
+    height:30px; padding:0 14px; background:rgba(255,255,255,.06);
+    border:1px solid var(--border); border-radius:6px; color:#cbd5e1;
+    font-size:.75rem; font-weight:600; cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+  }
+  .mdv-btn:hover { background:rgba(255,255,255,.12); color:#fff; border-color:var(--accent); }
+  .mdv-wrap { max-width:840px; margin:0 auto; padding:32px 24px 80px; }
+  .mdv-content { font-size:.95rem; line-height:1.7; }
+  .mdv-content h1,.mdv-content h2,.mdv-content h3 { border-bottom:1px solid var(--border); padding-bottom:.3em; color:#fff; }
+  .mdv-content code { background:rgba(255,255,255,.08); padding:.15em .4em; border-radius:4px; font-family:Consolas,monospace; font-size:.85em; }
+  .mdv-content pre { background:#12141d; border:1px solid var(--border); border-radius:8px; padding:14px 16px; overflow-x:auto; }
+  .mdv-content pre code { background:none; padding:0; }
+  .mdv-content blockquote { border-left:3px solid var(--blue); margin:0; padding:2px 16px; color:var(--muted); }
+  .mdv-content table { border-collapse:collapse; width:100%; }
+  .mdv-content th,.mdv-content td { border:1px solid var(--border); padding:6px 10px; }
+  .mdv-content a { color:var(--blue); }
+  .mdv-content img { max-width:100%; }
+</style>
+</head>
+<body>
+  <div class="mdv-bar">
+    <span class="mdv-title">📝 Markdown Önizleme</span>
+    <button class="mdv-btn" onclick="mdvCopy()">⧉ Copy .md</button>
+    <button class="mdv-btn" onclick="mdvDownload()">⬇ Export .md</button>
+  </div>
+  <div class="mdv-wrap">
+    <div class="mdv-content" id="mdv-content"></div>
+  </div>
+  <script>
+    const MD_RAW = ${JSON.stringify(mdText)};
+    document.getElementById('mdv-content').innerHTML = marked.parse(MD_RAW);
+
+    function mdvDownload() {
+      const blob = new Blob([MD_RAW], { type: 'text/markdown;charset=utf-8' });
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'response.md';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+
+    function mdvCopy() {
+      navigator.clipboard.writeText(MD_RAW).then(() => {
+        const btn = document.querySelectorAll('.mdv-btn')[0];
+        const old = btn.textContent;
+        btn.textContent = '✓ Kopyalandı';
+        setTimeout(() => btn.textContent = old, 1400);
+      });
+    }
+  <\/script>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+  }
+
+  // ─── Mermaid modal ────────────────────────────────────────────────────────
+  function mermaidOpen() {
+    document.getElementById('mmr-overlay').classList.add('open');
+  }
+
+  function mermaidClose() {
+    document.getElementById('mmr-overlay').classList.remove('open');
+  }
+
+  // Mermaid field'ını JSON'dan recursive olarak bul
+  function mmrExtract(obj) {
+    if (typeof obj !== 'object' || obj === null) return null;
+    if (typeof obj.mermaid === 'string') return obj.mermaid;
+    for (const v of Object.values(obj)) {
+      const found = mmrExtract(v);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  // \n \t \" gibi kaçış dizilerini çöz
+  function mmrUnescape(s) {
+    return s
+      .replace(/\\n/g, '\n')
+      .replace(/\\t/g, '\t')
+      .replace(/\\r/g, '')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\');
+  }
+
+  // ─── Zoom / Pan state ────────────────────────────────────────────────────
+  let _mmrScale = 1, _mmrPanX = 0, _mmrPanY = 0;
+  let _mmrDrag  = null;   // { startX, startY, originX, originY }
+  let _mmrSvgW  = 0, _mmrSvgH = 0;  // SVG'nin doğal (1x) piksel boyutu
+  let _mmrSvgEl = null;              // aktif SVG elementi
+
+  function _mmrApply() {
+    // SVG'yi hedef boyuta doğrudan yeniden render et → her zaman keskin
+    if (_mmrSvgEl && _mmrSvgW && _mmrSvgH) {
+      _mmrSvgEl.setAttribute('width',  Math.round(_mmrSvgW  * _mmrScale));
+      _mmrSvgEl.setAttribute('height', Math.round(_mmrSvgH * _mmrScale));
+    }
+    // Pan için sadece translate (scale kullanılmıyor)
+    document.getElementById('mmr-diagram').style.transform =
+      `translate(${_mmrPanX}px,${_mmrPanY}px)`;
+    document.getElementById('mmr-zoom-pct').textContent =
+      Math.round(_mmrScale * 100) + '%';
+  }
+
+  // SVG'nin kısıtsız doğal boyutunu oku (mermaid width/height attr veya viewBox'tan)
+  function _mmrReadNaturalSize(svg) {
+    // mermaid, SVG'ye width/height attr yazar — sayısal değerler en güvenilir kaynak
+    let w = parseFloat(svg.getAttribute('width'));
+    let h = parseFloat(svg.getAttribute('height'));
+    if (w > 0 && h > 0) return { w, h };
+
+    // viewBox varsa onu kullan
+    const vb = svg.getAttribute('viewBox');
+    if (vb) {
+      const parts = vb.trim().split(/[\s,]+/);
+      w = parseFloat(parts[2]);
+      h = parseFloat(parts[3]);
+      if (w > 0 && h > 0) return { w, h };
+    }
+
+    // Son çare: DOM layout'una bak (transform sıfırlanmış halde)
+    return { w: svg.clientWidth || 800, h: svg.clientHeight || 600 };
+  }
+
+  function _mmrStage() { return document.getElementById('mmr-right'); }
+
+  function mmrZoom(delta, cx, cy) {
+    const s = _mmrStage();
+    const px = cx ?? s.clientWidth  / 2;
+    const py = cy ?? (s.clientHeight - 46) / 2 + 46;
+    const prev = _mmrScale;
+    _mmrScale = Math.min(10, Math.max(0.05, _mmrScale + delta * _mmrScale));
+    _mmrPanX  = px - (_mmrScale / prev) * (px - _mmrPanX);
+    _mmrPanY  = py - (_mmrScale / prev) * (py - _mmrPanY);
+    _mmrApply();
+  }
+
+  function mmrFit() {
+    if (!_mmrSvgW || !_mmrSvgH) return;
+    const s   = _mmrStage();
+    const pad = 48;
+    const rw  = s.clientWidth  - pad * 2;
+    const rh  = s.clientHeight - 46 - pad * 2;   // 46 = topbar yüksekliği
+    _mmrScale = Math.min(rw / _mmrSvgW, rh / _mmrSvgH);
+    _mmrPanX  = (s.clientWidth  - _mmrSvgW * _mmrScale) / 2;
+    _mmrPanY  = 46 + (s.clientHeight - 46 - _mmrSvgH * _mmrScale) / 2;
+    _mmrApply();
+  }
+
+  function mmrResetView() {
+    if (!_mmrSvgW || !_mmrSvgH) return;
+    const s  = _mmrStage();
+    _mmrScale = 1;
+    _mmrPanX  = (s.clientWidth  - _mmrSvgW) / 2;
+    _mmrPanY  = 46 + (s.clientHeight - 46 - _mmrSvgH) / 2;
+    _mmrApply();
+  }
+
+  // Wheel zoom (fareye göre) — topbar'a dokunmadan
+  document.getElementById('mmr-right').addEventListener('wheel', e => {
+    if (e.target.closest('.mmr-topbar') || e.target.closest('.mmr-zoom-bar')) return;
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    mmrZoom(e.deltaY < 0 ? 0.1 : -0.1, e.clientX - rect.left, e.clientY - rect.top);
+  }, { passive: false });
+
+  // Sürükle-pan — sadece canvas alanında
+  document.getElementById('mmr-right').addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    if (e.target.closest('.mmr-topbar') || e.target.closest('.mmr-zoom-bar')) return;
+    _mmrDrag = { startX: e.clientX, startY: e.clientY, originX: _mmrPanX, originY: _mmrPanY };
+    _mmrStage().classList.add('dragging');
+  });
+  window.addEventListener('mousemove', e => {
+    if (!_mmrDrag) return;
+    _mmrPanX = _mmrDrag.originX + (e.clientX - _mmrDrag.startX);
+    _mmrPanY = _mmrDrag.originY + (e.clientY - _mmrDrag.startY);
+    _mmrApply();
+  });
+  window.addEventListener('mouseup', () => {
+    _mmrDrag = null;
+    _mmrStage().classList.remove('dragging');
+  });
+
+  // F → fit, Esc → kapat
+  document.addEventListener('keydown', e => {
+    if (!document.getElementById('mmr-overlay').classList.contains('open')) return;
+    if (e.key === 'Escape') { mermaidClose(); return; }
+    if (e.key === 'f' || e.key === 'F') mmrFit();
+  });
+
+  // ─── Export ───────────────────────────────────────────────────────────────
+  function mmrExportSVG() {
+    if (!_mmrSvgEl) { toast('Önce bir diagram render edin', 'err'); return; }
+    const clone = _mmrSvgEl.cloneNode(true);
+    clone.setAttribute('width',  _mmrSvgW);
+    clone.setAttribute('height', _mmrSvgH);
+    // XMLSerializer → geçerli XML/SVG üretir (outerHTML'deki <br> sorunu olmaz)
+    const serialized = new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([serialized], { type: 'image/svg+xml;charset=utf-8' });
+    _mmrDownload(URL.createObjectURL(blob), 'diagram.svg');
+    toast('SVG indirildi');
+  }
+
+  async function mmrExportPNG() {
+    if (!_mmrSvgEl) { toast('Önce bir diagram render edin', 'err'); return; }
+    const scale  = 2; // 2× yüksek çözünürlük
+    const w      = Math.round(_mmrSvgW * scale);
+    const h      = Math.round(_mmrSvgH * scale);
+    const clone  = _mmrSvgEl.cloneNode(true);
+    clone.setAttribute('width',  w);
+    clone.setAttribute('height', h);
+    const svgStr = new XMLSerializer().serializeToString(clone);
+    const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+      _mmrDownload(canvas.toDataURL('image/png'), 'diagram.png');
+      toast('PNG indirildi');
+    };
+    img.src = dataUrl;
+  }
+
+  function _mmrDownload(url, filename) {
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  function mmrReset() {
+    document.getElementById('mmr-empty').style.display = '';
+    document.getElementById('mmr-diagram').innerHTML   = '';
+    _mmrSvgEl = null; _mmrSvgW = 0; _mmrSvgH = 0;
+    _mmrScale = 1;    _mmrPanX = 0; _mmrPanY = 0;
+    document.getElementById('mmr-diagram').style.transform = '';
+    document.getElementById('mmr-zoom-pct').textContent = '100%';
+  }
+
+  let _mmrTimer = null;
+  function mmrAutoRender() {
+    clearTimeout(_mmrTimer);
+    _mmrTimer = setTimeout(mermaidRender, 600);
+  }
+
+  async function mermaidRender() {
+    const raw = document.getElementById('mmr-input').value.trim();
+    if (!raw) { mmrReset(); return; }
+
+    let definition = raw;
+
+    // JSON ise mermaid alanını çıkar
+    if (raw.startsWith('{') || raw.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(raw);
+        const extracted = mmrExtract(parsed);
+        if (extracted) definition = extracted;
+      } catch (_) { /* JSON değil, ham metin olarak kullan */ }
+    }
+
+    // Kaçış dizilerini çöz
+    definition = mmrUnescape(definition);
+
+    const diagramEl = document.getElementById('mmr-diagram');
+    const emptyEl   = document.getElementById('mmr-empty');
+
+    try {
+      const id = 'mmr-svg-' + Date.now();
+      const { svg } = await mermaid.render(id, definition);
+      diagramEl.innerHTML = svg;
+      emptyEl.style.display = 'none';
+
+      // mermaid'in max-width kısıtını kaldır, doğal boyutu al
+      const svgEl = diagramEl.querySelector('svg');
+      if (svgEl) {
+        svgEl.style.maxWidth = 'none';
+        const nat = _mmrReadNaturalSize(svgEl);
+        _mmrSvgW  = nat.w;
+        _mmrSvgH  = nat.h;
+        _mmrSvgEl = svgEl;
+        // viewBox koru, width/height'ı sayısal değere temizle
+        svgEl.setAttribute('width',  nat.w);
+        svgEl.setAttribute('height', nat.h);
+      }
+
+      // Sıfırla ve sığdır
+      _mmrScale = 1; _mmrPanX = 0; _mmrPanY = 0;
+      setTimeout(mmrFit, 30);
+    } catch (err) {
+      diagramEl.innerHTML = `<div class="mmr-err">Mermaid hatası:\n${err?.message ?? String(err)}</div>`;
+      emptyEl.style.display = 'none';
+      _mmrSvgW = 0; _mmrSvgH = 0;
+      _mmrScale = 1; _mmrPanX = 0; _mmrPanY = 0; _mmrApply();
+    }
+  }
+
+  // Response area'daki mermaid butonlarından da açılabilsin
+  function openMermaidWith(data) {
+    const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    document.getElementById('mmr-input').value = text;
+    mermaidOpen();
+    mermaidRender();
+  }
+</script>
+</body>
+</html>
