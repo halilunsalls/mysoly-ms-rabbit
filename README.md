@@ -1,0 +1,1 @@
+# mysoly-ms-rabbit
