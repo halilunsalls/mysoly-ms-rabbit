@@ -1265,7 +1265,14 @@
 
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <script>
-  mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'default',
+    securityLevel: 'loose',
+    // Pipeline/chat diagrams often exceed Mermaid's defaults (50k chars / 500 edges).
+    maxTextSize: 10_000_000,
+    maxEdges: 10_000,
+  });
 
   // Reply cache — inline onclick'te güvenli referans için
   const _mmrCache = [];
