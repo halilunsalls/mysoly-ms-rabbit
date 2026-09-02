@@ -99,7 +99,7 @@ RABBIT_PORT=5672
 RABBIT_USER=guest
 RABBIT_PASS=guest
 RABBIT_VHOST=/
-RABBIT_TIMEOUT=30
+RABBIT_TIMEOUT=600
 
 # Kuyruk öneki: boş bırakılırsa kuyruk adı "chat"
 # "local" → "local_chat", "prod" → "prod_pipeline"
@@ -154,7 +154,7 @@ Uygulama **http://localhost:8005** adresinde açılır.
 3. Mikroservisin ilgili kuyrukları dinlediğinden emin olun.
 4. Soldan `pipeline.list` seçip **Send** — cevap panelinde pipeline listesi gelmeli.
 
-Cevap 30 sn içinde gelmezse `504` ve şu mesaj benzeri bir hata döner: kuyruk adı mikroserviste `RABBIT_QUEUES` ile tanımlı mı?
+Cevap 600 sn içinde gelmezse `504` ve şu mesaj benzeri bir hata döner: kuyruk adı mikroserviste `RABBIT_QUEUES` ile tanımlı mı?
 
 ---
 
@@ -197,7 +197,7 @@ Aktif bağlantı ayarları + `env_prefix` (şifre düz metin döner; sadece güv
   "user": "app",
   "password": "secret",
   "vhost": "/",
-  "timeout": 30
+  "timeout": 600
 }
 ```
 
@@ -221,7 +221,7 @@ Boş bırakılan alanlar değişmez.
     "session_id": null
   },
   "rpc": true,
-  "timeout": 30,
+  "timeout": 600,
   "env_prefix": "local"
 }
 ```
@@ -231,7 +231,7 @@ Boş bırakılan alanlar değişmez.
 | `name` | `kuyruk.pattern` (`chat.run`). Bilinen listede yoksa ilk noktadan bölünür |
 | `data` | Mikroservise giden `data` gövdesi |
 | `rpc` | `true` = cevap bekle; `false` = sadece yayınla |
-| `timeout` | RPC saniye cinsinden bekleme (varsayılan 30) |
+| `timeout` | RPC saniye cinsinden bekleme (varsayılan 600) |
 | `env_prefix` | Kuyruk öneki; boşsa `RABBIT_ENV_PREFIX` veya öneksiz ad |
 
 Broker’a giden zarf:
@@ -334,7 +334,7 @@ Filtreler isteğe bağlıdır (`limit` varsayılan 50, `offset` 0).
 ```bash
 curl -s -X POST http://localhost:8005/api/send \
   -H "Content-Type: application/json" \
-  -d "{\"name\":\"pipeline.list\",\"data\":{},\"rpc\":true,\"timeout\":30,\"env_prefix\":\"local\"}"
+  -d "{\"name\":\"pipeline.list\",\"data\":{},\"rpc\":true,\"timeout\":600,\"env_prefix\":\"local\"}"
 ```
 
 ### curl — chat turu
@@ -394,7 +394,7 @@ Yeni bir rota eklenecekse:
 | `RABBIT_USER` | `guest` | Kullanıcı (`RABBITMQ_USER` yedek) |
 | `RABBIT_PASS` | `guest` | Şifre (`RABBITMQ_PASSWORD` yedek) |
 | `RABBIT_VHOST` | `/` | Virtual host (`RABBITMQ_VHOST` yedek) |
-| `RABBIT_TIMEOUT` | `30` | UI’daki varsayılan RPC timeout (sn) |
+| `RABBIT_TIMEOUT` | `600` | UI’daki varsayılan RPC timeout (sn) |
 | `RABBIT_ENV_PREFIX` | *(boş)* | Varsayılan kuyruk öneki; UI Env butonları isteği override eder |
 
 ---

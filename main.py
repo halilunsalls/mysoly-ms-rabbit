@@ -25,7 +25,7 @@ class RabbitMQConfig:
         self.user     = os.getenv("RABBIT_USER", os.getenv("RABBITMQ_USER", "guest")).strip()
         self.password = os.getenv("RABBIT_PASS", os.getenv("RABBITMQ_PASSWORD", "guest")).strip()
         self.vhost    = os.getenv("RABBIT_VHOST", os.getenv("RABBITMQ_VHOST", "/")).strip()
-        self.timeout  = int(os.getenv("RABBIT_TIMEOUT", "30"))
+        self.timeout  = int(os.getenv("RABBIT_TIMEOUT", "600"))
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
@@ -243,7 +243,7 @@ class SendRequest(BaseModel):
     name: str
     data: Any = None
     rpc: bool = True
-    timeout: int = 30
+    timeout: int = 600
     env_prefix: str = ""
 
 

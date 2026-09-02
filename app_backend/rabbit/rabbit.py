@@ -117,7 +117,7 @@ async def send_message_for_reply(
     when trying to delete a queue that still has an active consumer.
     """
     conn, _ = await connect()
-    timeout_s = timeout or int(os.getenv("RABBIT_TIMEOUT", "30"))
+    timeout_s = timeout or int(os.getenv("RABBIT_TIMEOUT", "600"))
 
     # Each RPC call gets its own channel — isolates failures between concurrent
     # requests and avoids shared-channel state corruption.
