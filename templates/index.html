@@ -646,7 +646,7 @@
         Wait for reply
       </div>
       <div class="to-wrap" id="to-wrap">
-        <input id="opt-timeout" type="number" value="{{ config.timeout }}" min="1" max="300"/>
+        <input id="opt-timeout" type="number" value="{{ config.timeout }}" min="1" max="600"/>
         <span>s</span>
       </div>
       <button class="send-btn" id="send-btn" onclick="sendMsg()">
@@ -950,7 +950,7 @@
     const btn  = document.getElementById('send-btn');
     const name = document.getElementById('inp-name').value.trim();
     const rpc  = document.getElementById('opt-rpc').checked;
-    const tout = +document.getElementById('opt-timeout').value || 30;
+    const tout = +document.getElementById('opt-timeout').value || 600;
 
     let data;
     try { data = JSON.parse(document.getElementById('data-body').value || '{}'); }
@@ -1620,7 +1620,7 @@
 
       // Sıfırla ve sığdır
       _mmrScale = 1; _mmrPanX = 0; _mmrPanY = 0;
-      setTimeout(mmrFit, 30);
+      setTimeout(mmrFit, 600);
     } catch (err) {
       diagramEl.innerHTML = `<div class="mmr-err">Mermaid hatası:\n${err?.message ?? String(err)}</div>`;
       emptyEl.style.display = 'none';
