@@ -305,7 +305,7 @@ RPC’de istemci exclusive bir reply kuyruğu açar, mesaja `reply_to` ve `corre
 | `chat.list` | `GET /chats` | `{}` |
 | `chat.get` | `GET /chats/{name}` | `chat_name` |
 | `chat.diagram` | `GET /chats/{name}/diagram` | `chat_name` |
-| `chat.run` | `POST /chat/run` | `chat_name`, `prod_name`, `account_id`, `group_id`, `message`, isteğe bağlı `session_id` |
+| `chat.run` | `POST /chat/run` | `chat_name`, `prod_name`, `account_id`, `group_id`, `message`, isteğe bağlı `session_id`, `vars` |
 | `chat.session.list` | `GET /chats/{name}/sessions` | `chat_name`, `status`, `prod_name`, `group_id`, `account_id`, `limit`, `offset` |
 | `chat.session.get` | `GET /chats/{name}/sessions/{id}` | `session_id` |
 | `chat.session.messages` | `GET /chats/{name}/sessions/{id}/messages` | `chat_name`, `session_id`, `limit`, `offset` |

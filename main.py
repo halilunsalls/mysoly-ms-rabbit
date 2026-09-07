@@ -119,6 +119,7 @@ KNOWN_ROUTES: dict[str, dict] = {
             "group_id": "group-1",
             "message": "Hello",
             "session_id": None,
+            "vars": {"content": [], "sections": []},
         },
         "capture": ["session_id"],
     },
