@@ -140,7 +140,8 @@ Uygulama **http://localhost:8005** adresinde açılır.
 
 | Adres | Ne |
 |---|---|
-| http://localhost:8005/ | Web UI |
+| http://localhost:8005/ | RPC konsolu (pipeline / chat / logs) |
+| http://localhost:8005/chat | Chat playground — gerçek sohbet, session ve vars |
 | http://localhost:8005/docs | Swagger (FastAPI otomatik) |
 | http://localhost:8005/redoc | ReDoc |
 | http://localhost:8005/api/ping | Broker bağlantı kontrolü |
@@ -177,6 +178,21 @@ Sol menü üç grupta bilinen rotaları listeler. Bir rota seçilince payload ş
 **Captured** çubuğu cevaptan `session_id`, `chat_name`, `account_id`, `group_id`, `prod_name`, `pipeline` gibi alanları tutar ve sonraki şablona basar. `chat.run` sonrası `session_id` ile devam etmek için kullanılır.
 
 **Builder**, JSON yerine form alanlarıyla (özellikle chat) payload üretir. **Mermaid** butonu / cevap içindeki diyagram, zoom ve SVG/PNG dışa aktarma sunar.
+
+### Chat playground (`/chat`)
+
+Postman / RPC konsolu yerine sohbet gibi test etmek için:
+
+1. Üst çubuktan **Chat** veya http://localhost:8005/chat
+2. Env + Connect (aynı broker ayarları)
+3. `chat_name` listeden seçilir (`chat.list` / `chat.get`)
+4. `account_id` / `group_id` / `prod_name` ortak; **vars her chat için ayrı** — `chat.get` tanımından doldurulur, chat değişince karışmaz
+5. Mesaj yaz, Enter — her tur `chat.run`; `session_id` de chat’e özel tutulur
+6. Dönen `extract_vars` otomatik uygulanır (`scope` tek kullanımlıktır)
+7. Cevaptaki `employees` / `clients` satırına tıklayınca o chat’in id alanı kilitlenir
+8. **Reset to chat defaults** o chat’in vars’ını tanıma döndürür
+
+`mode` / `scope` chip’leri ilgili chat’in `extract_vars`’ına göre çıkar. JSON gerekirse **JSON** ile açılır.
 
 ---
 

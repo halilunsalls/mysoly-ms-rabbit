@@ -266,6 +266,14 @@ async def index(request: Request):
     })
 
 
+@app.get("/chat", response_class=HTMLResponse)
+async def chat_playground(request: Request):
+    return templates.TemplateResponse("chat.html", {
+        "request": request,
+        "config": config.to_dict(),
+    })
+
+
 @app.get("/api/config")
 async def get_config():
     return {**config.to_dict(), "env_prefix": os.getenv("RABBIT_ENV_PREFIX", "").strip()}
