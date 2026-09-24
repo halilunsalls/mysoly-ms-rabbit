@@ -67,8 +67,9 @@ KNOWN_ROUTES: dict[str, dict] = {
         "template": {
             "pipeline": "my_pipeline",
             "input": {"user_message": "Hello"},
-            "dry_run": False,
             "prod_name": "default",
+            "account_id": "account_1",
+            "group_id": "group_1",
         },
         "capture": [],
     },
@@ -115,8 +116,8 @@ KNOWN_ROUTES: dict[str, dict] = {
         "template": {
             "chat_name": "my_chat",
             "prod_name": "default",
-            "account_id": "account-1",
-            "group_id": "group-1",
+            "account_id": "account_1",
+            "group_id": "group_1",
             "message": "Hello",
             "session_id": None,
             "vars": {"content": [], "sections": []},
