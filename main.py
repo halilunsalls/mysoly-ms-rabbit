@@ -59,6 +59,14 @@ app = FastAPI(title="mysoly RabbitMQ Client", lifespan=lifespan)
 # queue + "." + pattern == key (e.g. chat + run → chat.run).
 
 KNOWN_ROUTES: dict[str, dict] = {
+    # ── System ─────────────────────────────────────────────────────────────
+    "sys.health": {
+        "queue": "sys", "pattern": "health",
+        "desc": "Version check (empty body)",
+        "http": "GET /",
+        "template": {},
+        "capture": [],
+    },
     # ── Pipeline ───────────────────────────────────────────────────────────
     "pipeline.run": {
         "queue": "pipeline", "pattern": "run",
@@ -102,13 +110,6 @@ KNOWN_ROUTES: dict[str, dict] = {
         "template": {},
         "capture": [],
     },
-    "chat.get": {
-        "queue": "chat", "pattern": "get",
-        "desc": "Chat definition + active session count",
-        "http": "GET /chats/{chat_name}",
-        "template": {"chat_name": "my_chat"},
-        "capture": [],
-    },
     "chat.run": {
         "queue": "chat", "pattern": "run",
         "desc": "Create session if needed, then send message",
@@ -123,120 +124,6 @@ KNOWN_ROUTES: dict[str, dict] = {
             "vars": {"content": [], "sections": []},
         },
         "capture": ["session_id"],
-    },
-    "chat.session.messages": {
-        "queue": "chat", "pattern": "session.messages",
-        "desc": "Message history",
-        "http": "GET /chats/{name}/sessions/{id}/messages",
-        "template": {
-            "chat_name": "my_chat",
-            "session_id": "",
-            "limit": 50,
-            "offset": 0,
-        },
-        "capture": [],
-    },
-    "chat.session.end": {
-        "queue": "chat", "pattern": "session.end",
-        "desc": "End a chat session",
-        "http": "DELETE /chats/{name}/sessions/{id}",
-        "template": {"chat_name": "my_chat", "session_id": ""},
-        "capture": [],
-    },
-    "chat.session.list": {
-        "queue": "chat", "pattern": "session.list",
-        "desc": "List sessions for a chat",
-        "http": "GET /chats/{name}/sessions",
-        "template": {
-            "chat_name": "my_chat",
-            "status": "active",
-            "prod_name": None,
-            "group_id": None,
-            "account_id": None,
-            "limit": 50,
-            "offset": 0,
-        },
-        "capture": [],
-    },
-    "chat.session.get": {
-        "queue": "chat", "pattern": "session.get",
-        "desc": "Get session row",
-        "http": "GET /chats/{name}/sessions/{id}",
-        "template": {"session_id": ""},
-        "capture": [],
-    },
-    "chat.session.vars": {
-        "queue": "chat", "pattern": "session.vars",
-        "desc": "Merge vars into session_vars",
-        "http": "PATCH /chats/{name}/sessions/{id}/vars",
-        "template": {
-            "chat_name": "my_chat",
-            "session_id": "",
-            "vars": {"key": "value"},
-        },
-        "capture": [],
-    },
-    # ── Logs (tables: log_llm_call, log_pipeline_run, chat_session, log_error)
-    "logs.ai": {
-        "queue": "logs", "pattern": "ai",
-        "desc": "LLM call logs (log_llm_call)",
-        "http": "GET /logs/ai",
-        "template": {
-            "engine_type": None,
-            "engine_id": None,
-            "agent": None,
-            "prod_name": None,
-            "limit": 50,
-            "offset": 0,
-        },
-        "capture": [],
-    },
-    "logs.pipeline": {
-        "queue": "logs", "pattern": "pipeline",
-        "desc": "Pipeline run logs (log_pipeline_run)",
-        "http": "GET /logs/pipeline",
-        "template": {
-            "run_id": None,
-            "pipeline_name": None,
-            "status": None,
-            "triggered_by": None,
-            "prod_name": None,
-            "limit": 50,
-            "offset": 0,
-        },
-        "capture": [],
-    },
-    "logs.chat": {
-        "queue": "logs", "pattern": "chat",
-        "desc": "Chat sessions (chat_session)",
-        "http": "GET /logs/chat",
-        "template": {
-            "chat_name": None,
-            "status": None,
-            "prod_name": None,
-            "group_id": None,
-            "account_id": None,
-            "limit": 50,
-            "offset": 0,
-        },
-        "capture": [],
-    },
-    "logs.errors": {
-        "queue": "logs", "pattern": "errors",
-        "desc": "Error logs (log_error)",
-        "http": "GET /logs/errors",
-        "template": {
-            "source": None,
-            "severity": None,
-            "engine_id": None,
-            "engine_type": None,
-            "agent": None,
-            "step_id": None,
-            "prod_name": None,
-            "limit": 50,
-            "offset": 0,
-        },
-        "capture": [],
     },
 }
 

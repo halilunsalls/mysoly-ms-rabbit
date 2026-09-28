@@ -5,69 +5,116 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Chat playground</title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     :root {
-      --bg: #0e1016;
-      --surface: #181b26;
-      --surface2: #1f2333;
-      --border: #2a2f45;
+      --bg: #09090b;
+      --surface: #121216;
+      --surface2: #1c1c22;
+      --border: rgba(255,255,255,.08);
+      --border-strong: rgba(255,255,255,.14);
       --accent: #ff6b35;
-      --blue: #60a5fa;
-      --green: #22c55e;
-      --red: #ef4444;
-      --yellow: #facc15;
-      --purple: #a78bfa;
-      --text: #e2e8f0;
-      --muted: #64748b;
-      --input: #12141d;
+      --blue: #7cb4ff;
+      --green: #3dd68c;
+      --red: #ff6b6b;
+      --yellow: #f5c451;
+      --purple: #c4b5fd;
+      --text: #f4f4f5;
+      --muted: #8b8b98;
+      --input: #0c0c0f;
+      --shadow: 0 10px 30px rgba(0,0,0,.28);
+      --sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, monospace;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: var(--bg); color: var(--text);
-      font-family: 'Segoe UI', system-ui, sans-serif;
+      background:
+        radial-gradient(900px 420px at 8% -10%, rgba(255,107,53,.08), transparent 55%),
+        radial-gradient(700px 380px at 100% 0%, rgba(124,180,255,.06), transparent 50%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
       height: 100vh; display: flex; flex-direction: column; overflow: hidden;
     }
     .topbar {
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 0 16px; height: 50px; display: flex; align-items: center;
-      gap: 10px; flex-shrink: 0;
+      height: 58px; display: flex; align-items: center; gap: 12px;
+      padding: 0 14px; flex-shrink: 0;
+      background: rgba(18,18,22,.78);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(16px);
     }
-    .brand { font-weight: 700; font-size: .92rem; white-space: nowrap; }
+    .brand {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 700; font-size: .95rem; white-space: nowrap;
+      color: inherit; text-decoration: none; letter-spacing: -.02em;
+    }
+    .brand-mark {
+      width: 26px; height: 26px; border-radius: 8px;
+      display: grid; place-items: center;
+      background: linear-gradient(160deg, #ff8a55, #ff6b35 55%, #e85d2a);
+      color: #fff; font-size: .78rem; font-weight: 700;
+      box-shadow: 0 4px 14px rgba(255,107,53,.35);
+    }
     .brand em { color: var(--accent); font-style: normal; }
-    .sep { width: 1px; height: 20px; background: var(--border); flex-shrink: 0; }
-    .lbl { font-size: .68rem; color: var(--muted); font-weight: 700;
-           letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
-    .tb-in {
-      background: var(--input); border: 1px solid var(--border);
-      border-radius: 6px; color: var(--text);
-      font-size: .8rem; padding: 0 9px; height: 30px; outline: none;
+    .tb-cluster {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 6px 4px 10px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 999px;
     }
-    .tb-in:focus { border-color: var(--accent); }
-    #ih { width: 125px; } #ip { width: 56px; }
-    #iu { width: 76px; } #iw { width: 76px; } #iv { width: 48px; }
+    .tb-grow { flex: 1; }
+    .lbl { font-size: .62rem; color: var(--muted); font-weight: 700;
+           letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+    .tb-in {
+      background: var(--input); border: 1px solid transparent;
+      border-radius: 999px; color: var(--text);
+      font-size: .78rem; padding: 0 10px; height: 28px; outline: none;
+      font-family: var(--mono);
+    }
+    .tb-in:focus { border-color: rgba(255,107,53,.55); }
+    #ih { width: 128px; } #ip { width: 64px; }
+    #iu { width: 84px; } #iw { width: 88px; } #iv { width: 56px; }
     .conn-btn {
-      height: 30px; padding: 0 13px;
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 6px; color: var(--text);
-      font-size: .8rem; font-weight: 600; cursor: pointer;
+      height: 30px; padding: 0 12px;
+      background: transparent; border: 1px solid var(--border-strong);
+      border-radius: 999px; color: var(--text);
+      font-family: inherit; font-size: .76rem; font-weight: 600; cursor: pointer;
       text-decoration: none; display: inline-flex; align-items: center;
     }
     .conn-btn:hover { border-color: var(--accent); color: var(--accent); }
-    .conn-btn.active { border-color: rgba(96,165,250,.4); color: var(--blue); }
+    .conn-btn.primary { background: var(--text); color: #111; border-color: transparent; font-weight: 700; }
+    .conn-btn.primary:hover { background: #fff; color: #111; }
+    .view-switch {
+      display: flex; padding: 3px; gap: 2px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border); border-radius: 999px;
+    }
+    .vs {
+      height: 28px; padding: 0 12px; border-radius: 999px;
+      display: inline-flex; align-items: center;
+      color: var(--muted); text-decoration: none;
+      font-size: .76rem; font-weight: 600;
+    }
+    .vs.on, .vs:hover { color: var(--text); background: var(--surface2); }
+    .vs.on { box-shadow: inset 0 0 0 1px var(--border-strong); }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-    .dot.on { background: var(--green); box-shadow: 0 0 5px var(--green); }
-    .dot.off { background: var(--red); box-shadow: 0 0 5px var(--red); }
+    .dot.on { background: var(--green); box-shadow: 0 0 0 4px rgba(61,214,140,.15); }
+    .dot.off { background: var(--red); box-shadow: 0 0 0 4px rgba(255,107,107,.15); }
     .env-sel {
-      display: flex; background: var(--input); border: 1px solid var(--border);
-      border-radius: 6px; overflow: hidden;
+      display: flex; gap: 2px; padding: 2px;
+      background: rgba(0,0,0,.28);
+      border: 1px solid var(--border); border-radius: 999px;
     }
     .env-opt {
-      padding: 0 10px; height: 30px; background: none; border: none;
-      border-right: 1px solid var(--border); color: var(--muted);
-      font-size: .73rem; font-weight: 600; cursor: pointer;
+      padding: 0 10px; height: 24px; background: none; border: none;
+      border-radius: 999px; color: var(--muted);
+      font-family: inherit; font-size: .7rem; font-weight: 600; cursor: pointer;
     }
-    .env-opt:last-child { border-right: none; }
-    .env-opt.active { background: var(--surface2); }
+    .env-opt:hover { color: var(--text); }
+    .env-opt.active { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--border-strong); }
     .env-opt[data-prefix="local"].active { color: var(--blue); }
     .env-opt[data-prefix="test"].active { color: var(--yellow); }
     .env-opt[data-prefix="rel"].active { color: var(--purple); }
@@ -75,31 +122,35 @@
 
     .workspace {
       flex: 1; display: grid;
-      grid-template-columns: 300px 1fr 340px;
+      grid-template-columns: 320px 1fr 360px;
+      gap: 12px; padding: 12px;
       min-height: 0; overflow: hidden;
     }
     .col {
       display: flex; flex-direction: column; min-height: 0; overflow: hidden;
-      border-right: 1px solid var(--border);
+      background: rgba(18,18,22,.92);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
     }
-    .col:last-child { border-right: none; }
     .col-head {
-      padding: 10px 12px; border-bottom: 1px solid var(--border);
+      padding: 12px 14px; border-bottom: 1px solid var(--border);
       display: flex; align-items: center; justify-content: space-between;
       flex-shrink: 0;
     }
     .col-title {
-      font-size: .65rem; font-weight: 700; letter-spacing: .1em;
+      font-size: .68rem; font-weight: 700; letter-spacing: .12em;
       text-transform: uppercase; color: var(--muted);
     }
     .mbtn {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 4px; color: var(--muted);
-      font-size: .68rem; font-weight: 600; padding: 2px 8px; cursor: pointer;
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      border-radius: 999px; color: var(--muted);
+      font-family: inherit; font-size: .68rem; font-weight: 600;
+      padding: 4px 10px; cursor: pointer;
     }
     .mbtn:hover { color: var(--text); border-color: var(--accent); }
     .mbtn.danger:hover { color: var(--red); border-color: var(--red); }
-    .side { background: var(--surface); overflow-y: auto; padding: 12px; }
+    .side { overflow-y: auto; padding: 14px; }
     .field { margin-bottom: 10px; }
     .field label {
       display: block; font-size: .62rem; font-weight: 700;
@@ -108,9 +159,9 @@
     }
     .in, select.in {
       width: 100%; background: var(--input); border: 1px solid var(--border);
-      border-radius: 6px; color: var(--text); font-size: .8rem;
-      padding: 0 9px; height: 32px; outline: none;
-      font-family: 'Consolas', monospace;
+      border-radius: 10px; color: var(--text); font-size: .8rem;
+      padding: 0 10px; height: 34px; outline: none;
+      font-family: var(--mono);
     }
     .in:focus, textarea.in:focus { border-color: var(--accent); }
     textarea.in {
@@ -121,7 +172,7 @@
     .row .in { flex: 1; }
     .hint { font-size: .68rem; color: var(--muted); margin-top: 4px; line-height: 1.4; }
     .sid {
-      font-family: 'Consolas', monospace; font-size: .72rem; color: var(--blue);
+      font-family: var(--mono); font-size: .72rem; color: var(--blue);
       word-break: break-all;
     }
     .sid.empty { color: var(--muted); font-style: italic; }
@@ -136,7 +187,7 @@
                background: rgba(96,165,250,.1); }
     .chip.used { opacity: .45; text-decoration: line-through; cursor: default; }
 
-    .thread { flex: 1; overflow-y: auto; padding: 16px; background: var(--bg); }
+    .thread { flex: 1; overflow-y: auto; padding: 18px; background: transparent; }
     .empty {
       height: 100%; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 8px; color: var(--muted);
@@ -167,11 +218,11 @@
     }
     .turn-box.open { display: block; }
     .bubble .txt {
-      padding: 10px 12px; border-radius: 10px; font-size: .86rem;
-      line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+      padding: 11px 13px; border-radius: 14px; font-size: .88rem;
+      line-height: 1.55; white-space: pre-wrap; word-break: break-word;
     }
-    .bubble.user .txt { background: rgba(96,165,250,.12); border: 1px solid rgba(96,165,250,.2); }
-    .bubble.bot .txt { background: var(--surface); border: 1px solid var(--border); }
+    .bubble.user .txt { background: rgba(124,180,255,.12); border: 1px solid rgba(124,180,255,.22); border-bottom-right-radius: 6px; }
+    .bubble.bot .txt { background: rgba(255,255,255,.04); border: 1px solid var(--border); border-bottom-left-radius: 6px; }
     .bubble.err .txt { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); color: #fca5a5; }
     .bubble.typing .txt {
       display: inline-flex; align-items: center; gap: 5px;
@@ -187,18 +238,18 @@
       0%, 80%, 100% { transform: translateY(0); opacity: .35; }
       40% { transform: translateY(-5px); opacity: 1; }
     }
-    .meta { font-size: .65rem; color: var(--muted); margin-top: 4px; font-family: 'Consolas', monospace; }
+    .meta { font-size: .65rem; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
     .bubble.user .meta { text-align: right; }
 
     .composer {
-      border-top: 1px solid var(--border); background: var(--surface);
-      padding: 10px 12px; flex-shrink: 0;
+      border-top: 1px solid var(--border); background: transparent;
+      padding: 12px 14px 14px; flex-shrink: 0;
     }
     .composer textarea {
-      width: 100%; min-height: 56px; max-height: 160px;
+      width: 100%; min-height: 64px; max-height: 160px;
       background: var(--input); border: 1px solid var(--border);
-      border-radius: 8px; color: var(--text); padding: 10px 12px;
-      font-size: .9rem; resize: vertical; outline: none;
+      border-radius: 14px; color: var(--text); padding: 12px 14px;
+      font-size: .92rem; resize: vertical; outline: none;
       font-family: inherit;
     }
     .composer textarea:focus { border-color: var(--accent); }
@@ -207,14 +258,15 @@
       margin-top: 8px; gap: 8px;
     }
     .send-btn {
-      height: 34px; padding: 0 16px;
-      background: linear-gradient(135deg, #ff6b35, #f7931e);
-      color: #fff; border: none; border-radius: 7px;
-      font-size: .82rem; font-weight: 700; cursor: pointer;
+      height: 36px; padding: 0 16px;
+      background: linear-gradient(180deg, #ff8a55, #ff6b35);
+      color: #fff; border: none; border-radius: 12px;
+      font-family: inherit; font-size: .82rem; font-weight: 700; cursor: pointer;
+      box-shadow: 0 8px 18px rgba(255,107,53,.28);
     }
     .send-btn:disabled { opacity: .38; cursor: not-allowed; }
 
-    .inspect { background: var(--surface); overflow-y: auto; padding: 12px; }
+    .inspect { overflow-y: auto; padding: 14px; }
     .kv { font-size: .75rem; margin-bottom: 8px; }
     .kv b { color: var(--muted); font-weight: 600; display: block; font-size: .62rem;
             letter-spacing: .08em; text-transform: uppercase; margin-bottom: 2px; }
@@ -239,40 +291,41 @@
       transition: opacity .2s, transform .2s; pointer-events: none;
     }
     #toast.show { opacity: 1; transform: translateY(0); }
-    #toast.ok { background: #14532d; border: 1px solid var(--green); color: #bbf7d0; }
-    #toast.err { background: #7f1d1d; border: 1px solid var(--red); color: #fecaca; }
+    #toast.ok { background: #10291c; border: 1px solid rgba(61,214,140,.45); color: #d7ffe9; }
+    #toast.err { background: #2a1214; border: 1px solid rgba(255,107,107,.45); color: #ffd6d6; }
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
   </style>
 </head>
 <body>
 <div class="topbar">
-  <div class="brand">my<em>soly</em></div>
-  <div class="sep"></div>
-  <span class="lbl">Host</span>
-  <input id="ih" class="tb-in" value="{{ config.host }}"/>
-  <input id="ip" class="tb-in" type="number" value="{{ config.port }}"/>
-  <div class="sep"></div>
-  <span class="lbl">Auth</span>
-  <input id="iu" class="tb-in" value="{{ config.user }}"/>
-  <input id="iw" class="tb-in" type="password" value="{{ config.password }}" placeholder="password"/>
-  <div class="sep"></div>
-  <span class="lbl">VHost</span>
-  <input id="iv" class="tb-in" value="{{ config.vhost }}"/>
-  <button class="conn-btn" onclick="connect()">Connect</button>
-  <div class="dot" id="dot"></div>
-  <div class="sep"></div>
-  <span class="lbl">Env</span>
-  <div class="env-sel">
-    <button class="env-opt active" data-prefix="" onclick="setPrefix(this)">— none</button>
-    <button class="env-opt" data-prefix="local" onclick="setPrefix(this)">local</button>
-    <button class="env-opt" data-prefix="test" onclick="setPrefix(this)">test</button>
-    <button class="env-opt" data-prefix="rel" onclick="setPrefix(this)">rel</button>
-    <button class="env-opt" data-prefix="prod" onclick="setPrefix(this)">prod</button>
+  <a class="brand" href="/"><span class="brand-mark">M</span><span>my<em>soly</em></span></a>
+  <div class="tb-cluster">
+    <span class="lbl">Broker</span>
+    <input id="ih" class="tb-in" value="{{ config.host }}"/>
+    <input id="ip" class="tb-in" type="number" value="{{ config.port }}"/>
+    <span class="lbl">Auth</span>
+    <input id="iu" class="tb-in" value="{{ config.user }}"/>
+    <input id="iw" class="tb-in" type="password" value="{{ config.password }}" placeholder="password"/>
+    <span class="lbl">VHost</span>
+    <input id="iv" class="tb-in" value="{{ config.vhost }}"/>
+    <button class="conn-btn primary" onclick="connect()">Connect</button>
+    <div class="dot" id="dot"></div>
   </div>
-  <div class="sep"></div>
-  <a class="conn-btn" href="/">RPC</a>
-  <a class="conn-btn active" href="/chat">Chat</a>
+  <div class="tb-cluster">
+    <span class="lbl">Env</span>
+    <div class="env-sel">
+      <button class="env-opt active" data-prefix="local" onclick="setPrefix(this)">local</button>
+      <button class="env-opt" data-prefix="test" onclick="setPrefix(this)">test</button>
+      <button class="env-opt" data-prefix="rel" onclick="setPrefix(this)">rel</button>
+      <button class="env-opt" data-prefix="prod" onclick="setPrefix(this)">prod</button>
+    </div>
+  </div>
+  <div class="tb-grow"></div>
+  <nav class="view-switch">
+    <a class="vs" href="/">RPC</a>
+    <a class="vs on" href="/chat">Chat</a>
+  </nav>
 </div>
 
 <div class="workspace">
@@ -399,8 +452,8 @@ const SKIP_SEED_KEYS = new Set([
   'selected_tables', 'route_reason', 'sql_history_context',
 ]);
 
-let ENV_PREFIX = '';
-let state = { chat_name: '', account_id: 'account-1', group_id: 'group-1', prod_name: 'default', env: '', byChat: {} };
+let ENV_PREFIX = 'local';
+let state = { chat_name: '', account_id: 'account-1', group_id: 'group-1', prod_name: 'default', env: 'local', byChat: {} };
 let defs = {};
 let lastVars = null;
 let lastReply = null;
@@ -440,13 +493,13 @@ function restore() {
       account_id: s.account_id || 'account-1',
       group_id: s.group_id || 'group-1',
       prod_name: s.prod_name || 'default',
-      env: s.env || '',
+      env: s.env || 'local',
       byChat: s.byChat || {},
     };
     document.getElementById('account-id').value = state.account_id;
     document.getElementById('group-id').value = state.group_id;
     document.getElementById('prod-name').value = state.prod_name;
-    if (state.env) _activatePrefix(state.env);
+    _activatePrefix(state.env);
     return state.chat_name;
   } catch { return ''; }
 }
@@ -861,7 +914,10 @@ function esc(s) {
 restore();
 showSession();
 fetch('/api/config').then(r => r.json()).then(d => {
-  if (d.env_prefix && !state.env) _activatePrefix(d.env_prefix);
+  if (d.env_prefix && !(JSON.parse(localStorage.getItem(STORE) || '{}').env)) {
+    _activatePrefix(d.env_prefix);
+    persist();
+  }
 }).catch(() => {});
 connect().then(loadChats);
 </script>
