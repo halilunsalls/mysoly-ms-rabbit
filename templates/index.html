@@ -1159,6 +1159,32 @@
 
   // ─── Response renderer ────────────────────────────────────────────────────
   let hasResp = false;
+  const _mmrCache = [];
+  const _mdCache = [];
+
+  function _hasMermaid(obj) {
+    if (!obj || typeof obj !== 'object') return false;
+    if (typeof obj.mermaid === 'string') return true;
+    return Object.values(obj).some(_hasMermaid);
+  }
+
+  function _looksLikeMarkdown(s) {
+    if (typeof s !== 'string' || s.trim().length < 20) return false;
+    return /```|^#{1,6}\s|\*\*[^*]+\*\*|^\s*[-*]\s+\S|^\s*\d+\.\s+\S|^>\s/m.test(s);
+  }
+
+  function _findMarkdown(obj, _depth) {
+    _depth = _depth || 0;
+    if (_depth > 6) return null;
+    if (typeof obj === 'string') return _looksLikeMarkdown(obj) ? obj : null;
+    if (!obj || typeof obj !== 'object') return null;
+    for (const [k, v] of Object.entries(obj)) {
+      if (k === 'mermaid') continue;
+      const found = _findMarkdown(v, _depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
 
   function addResp({ ok, type, name, queue, correlationId, envelope, reply, replyRaw, error, bytes }) {
     const area = document.getElementById('resp-area');
@@ -1441,37 +1467,6 @@
     maxTextSize: 10_000_000,
     maxEdges: 10_000,
   });
-
-  // Reply cache — inline onclick'te güvenli referans için
-  const _mmrCache = [];
-
-  function _hasMermaid(obj) {
-    if (!obj || typeof obj !== 'object') return false;
-    if (typeof obj.mermaid === 'string') return true;
-    return Object.values(obj).some(_hasMermaid);
-  }
-
-  // ─── Markdown viewer ───────────────────────────────────────────────────────
-  const _mdCache = [];
-
-  function _looksLikeMarkdown(s) {
-    if (typeof s !== 'string' || s.trim().length < 20) return false;
-    return /```|^#{1,6}\s|\*\*[^*]+\*\*|^\s*[-*]\s+\S|^\s*\d+\.\s+\S|^>\s/m.test(s);
-  }
-
-  // reply objesi içinde recursive olarak markdown'a benzeyen ilk string'i bul
-  function _findMarkdown(obj, _depth) {
-    _depth = _depth || 0;
-    if (_depth > 6) return null;
-    if (typeof obj === 'string') return _looksLikeMarkdown(obj) ? obj : null;
-    if (!obj || typeof obj !== 'object') return null;
-    for (const [k, v] of Object.entries(obj)) {
-      if (k === 'mermaid') continue;
-      const found = _findMarkdown(v, _depth + 1);
-      if (found) return found;
-    }
-    return null;
-  }
 
   function openMarkdownWith(mdText) {
     const html = `<!DOCTYPE html>
