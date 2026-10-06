@@ -231,7 +231,47 @@
       white-space: pre-wrap; word-break: break-word;
     }
     .report-block p.empty { color: var(--muted); font-style: italic; }
-    .json-panel { margin-top: 8px; }
+    .sec-modal {
+      position: fixed; inset: 0; z-index: 300;
+      display: none; align-items: center; justify-content: center;
+      background: rgba(0,0,0,.55); padding: 24px;
+    }
+    .sec-modal.open { display: flex; }
+    .sec-dialog {
+      width: min(720px, 100%);
+      max-height: min(86vh, 900px);
+      display: flex; flex-direction: column;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+    }
+    .sec-dialog header, .sec-dialog footer {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px; padding: 14px 16px; flex-shrink: 0;
+    }
+    .sec-dialog header { border-bottom: 1px solid var(--border); }
+    .sec-dialog footer { border-top: 1px solid var(--border); }
+    .sec-dialog h2 {
+      font-size: .92rem; font-weight: 700; letter-spacing: -.01em;
+    }
+    .sec-body { overflow-y: auto; padding: 8px 16px 16px; }
+    .sec-edit { padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .sec-edit:last-child { border-bottom: none; }
+    .sec-edit h3 { font-size: .84rem; margin-bottom: 6px; }
+    .sec-edit label {
+      display: block; font-size: .62rem; font-weight: 700;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 4px;
+    }
+    .sec-prompt {
+      width: 100%; min-height: 88px; resize: vertical;
+      background: var(--input); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: inherit; font-size: .8rem; line-height: 1.45;
+      padding: 8px 10px; outline: none;
+    }
+    .sec-prompt:focus { border-color: var(--accent); }
 
     .thread { flex: 1; overflow-y: auto; padding: 18px; background: transparent; }
     .empty {
@@ -448,6 +488,19 @@
     </div>
   </div>
 </div>
+<div class="sec-modal" id="sec-modal" onclick="if (event.target === this) closeSectionEditor()">
+  <div class="sec-dialog" role="dialog" aria-labelledby="sec-modal-title">
+    <header>
+      <h2 id="sec-modal-title">Section prompts</h2>
+      <button class="mbtn" onclick="closeSectionEditor()">Close</button>
+    </header>
+    <div class="sec-body" id="sec-modal-body"></div>
+    <footer>
+      <span class="hint" style="margin:0">Saved prompts are sent on every turn.</span>
+      <button class="send-btn" onclick="saveSectionEditor()">Save</button>
+    </footer>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script>
@@ -523,21 +576,21 @@ const REPORT_TEMPLATES = {
   leefgebied: {
     label: 'Leefgebiedrapportage',
     content: [
-      { title: 'Persoonlijk / psychisch functioneren', prompt: 'Beschrijf de gemoedstoestand (emoties, stemming, affect) én het psychisch functioneren (cognitie, realiteitsbesef, impulscontrole, ziekte-inzicht) van de cliënt, inclusief eventuele incongruentie tussen wat de cliënt zegt en wat wordt geobserveerd. Concreet gedrag, motivatie en medicatiegebruik vallen onder andere leefgebieden.', options: [], field_type: 'open_text' },
-      { title: 'Werk / opleiding / dagbesteding', prompt: "Beschrijf de deelname van de cliënt aan werk, vrijwilligerswerk, opleiding, re-integratietraject of dagbesteding: aanwezigheid, motivatie, werkhouding en contact met betrokken instanties (bijv. UWV). Vrijetijdsbesteding en hobby's vallen onder 'Daginvulling/tijdsbesteding'.", options: [], field_type: 'open_text' },
-      { title: 'Daginvulling / tijdsbesteding', prompt: "Beschrijf hoe de cliënt de dag, avond en het weekend structureert en invult (huishouden, hobby's, passieve tijdsbesteding, sociale/vrijetijdsactiviteiten), en signaleer gebrek aan structuur, verveling of doelloosheid. Werk, opleiding en betaalde dagbesteding vallen onder 'Werk/opleiding/dagbesteding'.", options: [], field_type: 'open_text' },
-      { title: 'Huisvesting', prompt: 'Beschrijf het type woonvorm, de stabiliteit van de huisvesting (bijv. dreigende huisuitzetting, verhuisplannen), de staat van de woning (schoon/vervuild/onderhoud/veiligheid) en het contact met verhuurder of woningbouw. Huishoudelijke vaardigheden en financiële huurproblemen vallen onder andere leefgebieden.', options: [], field_type: 'open_text' },
-      { title: 'Financiën', prompt: 'Beschrijf de inkomsten, het financieel beheer (zelfstandig, bewindvoering, budgetbeheer), eventuele schulden of betalingsachterstanden en het contact met betrokken instanties (bewindvoerder, schuldhulpverlening, gemeente).', options: [], field_type: 'open_text' },
-      { title: 'Huiselijke Relaties', prompt: "Beschrijf de kwaliteit van de relaties met partner, gezin en huisgenoten (steun, spanningen, conflicten, afhankelijkheid) en signaleer nadrukkelijk elke aanwijzing voor huiselijk geweld, dreiging of onveiligheid thuis. Algemene sociale contacten buiten het huishouden vallen onder 'Sociaal Netwerk'.", options: [], field_type: 'open_text' },
-      { title: 'Lichamelijke Gezondheid', prompt: 'Beschrijf fysieke klachten, medische diagnoses, medicatiegebruik en therapietrouw, contact met medische zorg (huisarts, specialist, fysiotherapie) en leefstijlfactoren (voeding, beweging, hygiëne). Psychische klachten en middelengebruik als gedragskeuze vallen onder andere leefgebieden.', options: [], field_type: 'open_text' },
-      { title: 'Middelengebruik', prompt: 'Beschrijf het gebruik van alcohol, drugs of andere middelen: welk middel, frequentie, context, controle over gebruik en gevolgen voor het functioneren. Vermeld betrokkenheid van verslavingszorg en signaleer expliciet incongruentie (bijv. cliënt ontkent gebruik maar begeleider observeert signalen).', options: [], field_type: 'open_text' },
-      { title: 'Basale-ADL', prompt: 'Evalueer de zelfstandigheid bij basisactiviteiten zoals wassen, aankleden en eten.', options: [], field_type: 'open_text' },
-      { title: 'Instrumentele-ADL', prompt: 'Beschrijf de zelfstandigheid bij complexe taken zoals koken, boodschappen en administratie.', options: [], field_type: 'open_text' },
-      { title: 'Sociaal Netwerk', prompt: "Beschrijf de contacten van de cliënt met vrienden, kennissen en buren buiten de huiselijke leefomgeving: kwaliteit, frequentie, steun of negatieve invloed, en eventueel sociaal isolement. Partner, gezin en huisgenoten vallen onder 'Huiselijke Relaties', niet hier.", options: [], field_type: 'open_text' },
-      { title: 'Justitie', prompt: 'Beschrijf de justitiële titel of maatregel (bijv. reclasseringstoezicht, meldplicht), de specifieke voorwaarden, of de cliënt zich hieraan houdt (overtredingen, waarschuwingen) en het contact met justitiële instanties. Vermeld effecten op ander functioneren alleen wanneer dit direct aan een voorwaarde gekoppeld is.', options: [], field_type: 'open_text' },
-      { title: 'Acties en Opvolging', prompt: 'Noteer concreet de afgesproken acties, interventies en vervolgstappen: wie is verantwoordelijk en binnen welke termijn. Signaleer wanneer een beschreven probleem geen gekoppelde actie heeft.', options: [], field_type: 'open_text' },
-      { title: 'Incidenten en/of calamiteiten', prompt: 'Vermeld incidenten of calamiteiten: agressie/geweld, veiligheidsincidenten (escalatie, politie), zelfbeschadiging of suïcidale uitspraken/pogingen, en overige gevaarlijke situaties. Geef aan of het een incident (beperkte impact) of calamiteit (ernstige/levensbedreigende impact) betreft, inclusief VIM-meldingen.', options: [], field_type: 'open_text' },
-      { title: 'Recidive risico', prompt: 'Geef een inschatting van het recidiverisico: benoem risicofactoren (bijv. middelengebruik, negatief netwerk, impulsiviteit) én beschermende factoren (bijv. stabiele huisvesting, motivatie, behandelbereidheid), en beschrijf welke interventies worden ingezet om dit risico te verlagen.', options: [], field_type: 'open_text' },
+      { title: 'Persoonlijk / psychisch functioneren', prompt: 'Gemoedstoestand en psychisch functioneren van de cliënt, zoals de begeleider waarnam of de cliënt zelf verwoordde: stemming en emotie (somber, gespannen, angstig, boos, rustig, piekeren, stress), stemmingswisselingen, affect; psychiatrische symptomen (depressieve klachten, angst, achterdocht, wanen, verwardheid), realiteitsbesef, concentratie en overzicht, impulscontrole en emotieregulatie, ziekte-inzicht en reflectie, en hoe de cliënt met spanning omgaat. Benoem incongruentie wanneer de bron die beschrijft (cliënt zegt dat het goed gaat, begeleider ziet somberheid). Dit is de hoofdsectie: hoort een gegeven bij meer dan één leefgebied, schrijf het hier en noem het niet nogmaals elders. Niet hier: slaap en lichamelijke klachten (Lichamelijke Gezondheid), middelengebruik, conflicten met anderen. Geen diagnose of oorzaak die de bron niet noemt.', options: [], field_type: 'open_text' },
+      { title: 'Werk / opleiding / dagbesteding', prompt: 'Deelname aan betaald werk, vrijwilligerswerk, opleiding, re-integratie of dagbesteding: aanwezigheid, afwezigheid en ziekmeldingen, te laat komen, motivatie, werkhouding, nakomen van afspraken, starten of stoppen met een traject, succeservaringen en problemen, en contact met UWV, opleiding of dagbesteding. Niet hier: financiële gevolgen, sociale contacten, psychische klachten. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
+      { title: 'Daginvulling / tijdsbesteding', prompt: "Hoe de cliënt de dag, avond en het weekend invult: dagritme en regelmaat of het ontbreken daarvan, een omgekeerd dag-nachtritme; hobby's, sport en huishoudelijke activiteiten als vaste invulling van de dag; passieve tijdsbesteding (veel slapen, op bed liggen, tv, gamen, niets doen); verveling, leegte of doelloos rondhangen. Niet hier: werk of opleiding, de relaties zelf, een psychische oorzaak. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.", options: [], field_type: 'open_text' },
+      { title: 'Huisvesting', prompt: 'Woonsituatie en de stabiliteit, veiligheid en geschiktheid ervan: woonvorm (eigen woning, begeleid wonen, kamer, inwonend, opvang), stabiel of tijdelijk verblijf, verhuisplannen, urgentie, dreigende huisuitzetting; staat van de woning (schoon, vervuild, rommelig, onderhoud, (on)veilig); omgang met de woning (overlast veroorzaken, verwaarlozing); contact, waarschuwingen of conflicten met verhuurder of woningbouw. Niet hier: huurachterstand als geldprobleem (Financiën), conflicten met buren (Sociaal Netwerk), huishoudelijke vaardigheden. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
+      { title: 'Financiën', prompt: 'Inkomsten (uitkering, loon, studiefinanciering), financieel beheer (zelfstandig, budgetbeheer, bewindvoering, hulp bij administratie), schulden, huurachterstand, betalingsregelingen en aanmaningen, overzicht en moeite met geldbeheer, impulsieve uitgaven, vermijden van post, en contact met bewindvoerder, schuldhulpverlening, gemeente of Geldplein. Niet hier: verlies van de woning, stress door schulden. Geen oordeel over geldgedrag dat de bron niet uitspreekt. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
+      { title: 'Huiselijke Relaties', prompt: 'Relaties met partner, gezin, familie en huisgenoten: een verandering in contact, steun of het ontbreken ervan, spanningen, ruzie, relatiebreuk, afhankelijkheid, samenwonen; en elke aanwijzing voor dreiging, agressie, angst of onveiligheid thuis, in de woorden van de bron. Niet hier: vrienden, kennissen en buren (Sociaal Netwerk), emoties van de cliënt, de woonsituatie zelf. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
+      { title: 'Lichamelijke Gezondheid', prompt: 'Fysieke toestand: pijn, vermoeidheid, slaapproblemen, hoofdpijn, ongemak; chronische ziekte, beperking of somatische diagnose; medicatie innemen, vergeten, weigeren, bijwerkingen; contact met huisarts, specialist, verloskundige, fysiotherapie of GGD; voeding, beweging, persoonlijke hygiëne, en lichamelijke gevolgen van middelengebruik wanneer de bron die noemt. Niet hier: psychische klachten en stemming, gebruik als gedrag (Middelengebruik). Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
+      { title: 'Middelengebruik', prompt: "Gebruik van alcohol, cannabis, cocaïne, amfetamine, GHB, lachgas of misbruik van medicatie: middel, frequentie (incidenteel, regelmatig, dagelijks), abstinentie of terugval, context (alleen, met anderen, bij stress), controle en craving, verslavingszorg, urinecontroles en behandelafspraken. Ook een moment waarop de cliënt zich van gebruik weerhield. Benoem incongruentie wanneer de bron die beschrijft (cliënt ontkent gebruik, begeleider ruikt alcohol). Gebruik het woord van de bron: 'iets drinken' blijft 'iets drinken'. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.", options: [], field_type: 'open_text' },
+      { title: 'Basale-ADL', prompt: 'Zelfstandigheid bij wassen, aankleden, eten, toiletgang en zich binnenshuis verplaatsen: zelf, met hulp, of niet. Koken, boodschappen en administratie horen bij Instrumentele-ADL. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
+      { title: 'Instrumentele-ADL', prompt: 'Zelfstandigheid bij koken, boodschappen, schoonmaken, de was, post en administratie, medicatie regelen en vervoer. De inhoud van schulden of bewind hoort bij Financiën; de staat van de woning bij Huisvesting. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
+      { title: 'Sociaal Netwerk', prompt: 'Contacten buiten het huishouden (vrienden, kennissen, buren): steunend of belemmerend, positieve of negatieve invloed, een risicovol netwerk of contact met oude vrienden uit een crimineel circuit, conflicten of overlast met buren, deelname aan groepen, eenzaamheid, terugtrekken of vermijden van contact. Niet hier: partner, gezin en huisgenoten; werkcontacten; begeleiders en hulpverlening. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
+      { title: 'Justitie', prompt: 'Justitiële titel of maatregel (voorwaardelijke straf, reclasseringstoezicht, bijzondere voorwaarden, ISD, schorsingsvoorwaarden), voorwaarden (meldplicht, locatiegebod, contactverbod, middelenverbod, behandelverplichting), naleving en overtredingen, waarschuwingen, contact met reclassering, DJI of toezichthouder, en zittingen of beslissingen van de rechtbank. Niet hier: middelengebruik, gedrag of huisvesting zelf, tenzij direct gekoppeld aan een voorwaarde. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
+      { title: 'Acties en Opvolging', prompt: 'Wat er na dit contact gedaan wordt: een vervolgafspraak, contact met een ketenpartner, bespreken in het team, een doorverwijzing, een actie die de cliënt gaat doen, gezamenlijke afspraken of een evaluatiemoment, met wie en wanneer, voor zover de bron dat noemt. Wat al tijdens dit contact gebeurde, hoort in zijn eigen sectie. Niet hier: observaties, risico-inschatting en justitiële verplichtingen. Bedenk geen actie die de bron niet noemt.', options: [], field_type: 'open_text' },
+      { title: 'Incidenten en/of calamiteiten', prompt: 'Een concrete onverwachte gebeurtenis met risico voor veiligheid, gezondheid of welzijn: verbale of fysieke agressie, bedreiging, intimidatie, escalatie, politie betrokken, crisis, zelfverwonding, suïcidale uitspraken of een poging, vermissing, ernstige vervuiling of een gevaarlijke situatie in de woning, of een ernstige overtreding of terugval met direct risico. Een gewone ruzie of zorg zonder escalatie hoort bij Huiselijke Relaties of Sociaal Netwerk. Incident: beperkte impact, geen blijvende schade. Calamiteit: alleen bij ernstige schade, levensgevaar of een structureel veiligheidsrisico dat de bron beschrijft. Schrijf niet dat er geen incidenten waren.', options: [], field_type: 'open_text' },
+      { title: 'Recidive risico', prompt: 'Vul deze sectie alleen wanneer de bron een van deze vijf signalen beschrijft: toename van spanningen (hoog in de emotie, bang voor eigen agressie), terugval in middelengebruik (opnieuw gebruikt), verlies van structuur (werk, dagbesteding of dagritme weggevallen), negatief netwerk (de bron noemt het netwerk crimineel of slecht van invloed), of overtreden voorwaarden. Beschrijf het signaal in de woorden van de bron en schrijf daarna: "Dit wijst op een verhoogd recidiverisico." Noem een beschermende stap alleen wanneer de bron die geeft (zich weerhouden van gebruik, zelf hulp zoeken, de spanning bespreken met de begeleider). Zonder een van deze signalen blijft deze sectie leeg: beschermende factoren of een begeleidingsgesprek alleen vullen haar niet. Nooit "hoog", nooit een voorspelling van een delict, nooit een signaal dat de bron niet geeft.', options: [], field_type: 'open_text' },
     ],
   },
   rapportage: {
@@ -770,11 +823,54 @@ function applyReportTemplate(id) {
   toast(tpl.label + ' loaded');
 }
 
-function toggleSectionsJson() {
-  const s = slot();
-  s.sectionsJsonOpen = !s.sectionsJsonOpen;
-  persist();
-  renderVarFields();
+function openSectionEditor() {
+  const v = currentVars();
+  const content = Array.isArray(v.content) ? v.content : [];
+  const sections = Array.isArray(v.sections) ? v.sections : [];
+  const titles = [];
+  content.forEach(item => {
+    if (item && item.title && !titles.includes(item.title)) titles.push(item.title);
+  });
+  sections.forEach(item => {
+    if (item && item.title && !titles.includes(item.title)) titles.push(item.title);
+  });
+  const body = document.getElementById('sec-modal-body');
+  body.innerHTML = titles.length
+    ? titles.map(title => {
+        const item = content.find(x => x && x.title === title) || {};
+        return `<section class="sec-edit" data-title="${esc(title)}">` +
+          `<h3>${esc(title)}</h3>` +
+          `<label>Prompt</label>` +
+          `<textarea class="sec-prompt">${esc(item.prompt || '')}</textarea>` +
+          `</section>`;
+      }).join('')
+    : '<div class="hint">No sections yet. Pick a template first.</div>';
+  document.getElementById('sec-modal').classList.add('open');
+}
+
+function closeSectionEditor() {
+  document.getElementById('sec-modal').classList.remove('open');
+}
+
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape' && document.getElementById('sec-modal').classList.contains('open')) {
+    closeSectionEditor();
+  }
+});
+
+function saveSectionEditor() {
+  const v = currentVars();
+  const content = Array.isArray(v.content) ? cloneJson(v.content) : [];
+  document.querySelectorAll('#sec-modal-body .sec-edit').forEach(card => {
+    const title = card.dataset.title;
+    const prompt = card.querySelector('textarea').value;
+    const item = content.find(x => x && x.title === title);
+    if (item) item.prompt = prompt;
+    else content.push({ title, prompt, options: [], field_type: 'open_text' });
+  });
+  writeVars({ ...currentVars(), content });
+  closeSectionEditor();
+  toast('Section prompts saved');
 }
 
 function restoreStartSections() {
@@ -847,11 +943,9 @@ function renderVarFields(skipJson) {
 }
 
 function renderReportVars(v, skipJson) {
-  const content = Array.isArray(v.content) ? v.content : [];
   const stats = sectionStats(v.sections);
   const s = slot();
   const fresh = s.sectionsUpdatedAt && (Date.now() - s.sectionsUpdatedAt < 1600);
-  const jsonOn = !!s.sectionsJsonOpen;
   const blocks = stats.list.map(sec => {
     const title = esc((sec && sec.title) || '(no title)');
     const answer = String(sec && sec.answer != null ? sec.answer : '').trim();
@@ -862,28 +956,16 @@ function renderReportVars(v, skipJson) {
   }).join('');
   const report = stats.list.length
     ? `<div class="report-doc${fresh ? ' fresh' : ''}">${blocks}</div>`
-    : `<div class="hint">No sections yet. Pick a template, or open the settings icon to paste JSON.</div>`;
+    : `<div class="hint">No sections yet. Pick a template, or open the settings icon to edit prompts.</div>`;
   const picked = s.reportTemplate;
   const chips = Object.entries(REPORT_TEMPLATES).map(([id, tpl]) =>
     `<button class="chip${picked === id ? ' on' : ''}" onclick="applyReportTemplate('${id}')">${esc(tpl.label)}</button>`
   ).join('');
-  const gear = `<button class="icon-btn${jsonOn ? ' on' : ''}" title="Edit content and sections JSON" onclick="toggleSectionsJson()" aria-label="Edit JSON">` +
+  const gear = `<button class="icon-btn" title="Edit section prompts" onclick="openSectionEditor()" aria-label="Edit section prompts">` +
     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
     `<circle cx="12" cy="12" r="3"></circle>` +
     `<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>` +
     `</svg></button>`;
-  const jsonPanel = jsonOn
-    ? `<div class="json-panel">` +
-      `<div class="hint">content <span class="badge sticky">fixed</span> · ${content.length} template field${content.length === 1 ? '' : 's'}</div>` +
-      `<div class="hint">Sent on every turn. Replies do not change it.</div>` +
-      `<textarea class="in report-json" spellcheck="false" onchange="commitReportJson('content', this)">${esc(JSON.stringify(v.content ?? [], null, 2))}</textarea>` +
-      `<div class="json-err"></div>` +
-      `<div class="hint" style="margin-top:10px">sections JSON</div>` +
-      `<textarea class="in report-json${fresh ? ' fresh' : ''}" spellcheck="false" onchange="commitReportJson('sections', this)">${esc(JSON.stringify(v.sections ?? [], null, 2))}</textarea>` +
-      `<div class="json-err"></div>` +
-      `<div class="row" style="margin-top:6px"><button class="mbtn" onclick="restoreStartSections()">Restore start sections</button></div>` +
-      `</div>`
-    : '';
   const box = document.getElementById('var-fields');
   box.innerHTML =
     `<div class="hint">template</div><div class="chips">${chips}</div>` +
@@ -891,8 +973,7 @@ function renderReportVars(v, skipJson) {
       `<div class="hint">sections <span class="badge live">round-trip</span> · ${stats.filled}/${stats.total} answered${fresh ? ' · updated' : ''}</div>` +
       gear +
     `</div>` +
-    report +
-    jsonPanel;
+    report;
   if (!skipJson && jsonOpen) {
     document.getElementById('vars-json').value = JSON.stringify(v, null, 2);
   }
