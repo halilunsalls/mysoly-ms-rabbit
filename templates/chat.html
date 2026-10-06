@@ -126,6 +126,7 @@
       gap: 12px; padding: 12px;
       min-height: 0; overflow: hidden;
     }
+    .workspace.report-mode { grid-template-columns: 440px 1fr 340px; }
     .col {
       display: flex; flex-direction: column; min-height: 0; overflow: hidden;
       background: rgba(18,18,22,.92);
@@ -186,6 +187,51 @@
     .chip.on { color: var(--blue); border-color: rgba(96,165,250,.4);
                background: rgba(96,165,250,.1); }
     .chip.used { opacity: .45; text-decoration: line-through; cursor: default; }
+    .badge {
+      display: inline-block; margin-left: 6px;
+      font-size: .58rem; letter-spacing: .06em; text-transform: uppercase;
+      border-radius: 999px; padding: 1px 6px; border: 1px solid var(--border);
+      vertical-align: 1px;
+    }
+    .badge.sticky { color: var(--yellow); border-color: rgba(245,196,81,.45); }
+    .badge.live { color: var(--green); border-color: rgba(61,214,140,.45); }
+    .report-json { min-height: 110px; font-size: .7rem; }
+    .report-json.fresh { border-color: rgba(61,214,140,.75); }
+    .json-err { color: var(--red); font-size: .66rem; min-height: 1em; margin-top: 2px; }
+    .sec-head {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 8px; margin-top: 12px;
+    }
+    .sec-head .hint { margin-top: 4px; }
+    .icon-btn {
+      flex-shrink: 0; width: 28px; height: 28px; padding: 0;
+      display: grid; place-items: center;
+      background: rgba(255,255,255,.04); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--muted); cursor: pointer;
+    }
+    .icon-btn:hover { color: var(--text); border-color: var(--accent); }
+    .icon-btn.on { color: var(--accent); border-color: rgba(255,107,53,.55); background: rgba(255,107,53,.1); }
+    .icon-btn svg { width: 15px; height: 15px; display: block; }
+    .report-doc {
+      margin-top: 8px;
+      background: var(--input);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2px 12px 8px;
+    }
+    .report-doc.fresh { border-color: rgba(61,214,140,.75); }
+    .report-block { padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .report-block:last-child { border-bottom: none; }
+    .report-block h3 {
+      font-size: .8rem; font-weight: 700; line-height: 1.35;
+      margin-bottom: 4px; color: var(--text);
+    }
+    .report-block p {
+      font-size: .78rem; line-height: 1.55;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .report-block p.empty { color: var(--muted); font-style: italic; }
+    .json-panel { margin-top: 8px; }
 
     .thread { flex: 1; overflow-y: auto; padding: 18px; background: transparent; }
     .empty {
@@ -328,7 +374,7 @@
   </nav>
 </div>
 
-<div class="workspace">
+<div class="workspace" id="workspace">
   <div class="col">
     <div class="col-head">
       <span class="col-title">Session</span>
@@ -387,7 +433,7 @@
     <div class="composer">
       <textarea id="msg" placeholder="Type a message. Enter sends, Shift+Enter newline." onkeydown="onKey(event)"></textarea>
       <div class="composer-row">
-        <span class="hint" style="margin:0">Sends chat.run over the selected env queue</span>
+        <span class="hint" id="composer-hint" style="margin:0">Sends chat.run over the selected env queue</span>
         <button class="send-btn" id="send-btn" onclick="sendTurn()">Send</button>
       </div>
     </div>
@@ -447,6 +493,61 @@ const CHAT_PRESETS = {
   },
 };
 
+const REPORT_CHAT_PREFIX = 'careons_chat_report';
+const REPORT_PRESET = {
+  defaults: { content: [], sections: [] },
+  oneShot: [],
+  sticky: ['content'],
+  roundTrip: ['sections'],
+};
+
+const REPORT_TEMPLATES = {
+  soep: {
+    label: 'SOEP',
+    content: [
+      { title: 'Subjectief', prompt: 'Beschrijf gedetailleerd de subjectieve ervaringen, klachten en gevoelens van de client.', options: [], field_type: 'open_text' },
+      { title: 'Objectief', prompt: 'Beschrijf objectief de waarneembare gegevens van de client, zoals gedrag, fysieke toestand en meetbare signalen.', options: [], field_type: 'open_text' },
+      { title: 'Evaluatie', prompt: 'Beschrijf de belangrijkste punten over de client die relevant zijn voor evaluatie. Focus op veranderingen, observaties en belangrijke conclusies.', options: [], field_type: 'open_text' },
+      { title: 'Plan', prompt: 'Beschrijf de geplande acties, doelen en interventies voor de client', options: [], field_type: 'open_text' },
+    ],
+  },
+  grip: {
+    label: 'GRIP',
+    content: [
+      { title: 'Doel', prompt: 'Beschrijf de concrete doelen die bereikt moeten worden voor de client, afgestemd op de situatie en evaluatie.', options: [], field_type: 'open_text' },
+      { title: 'Interventie', prompt: 'Beschrijf welke interventies zijn uitgevoerd voor de client en hoe deze zijn toegepast.', options: [], field_type: 'open_text' },
+      { title: 'Reactie', prompt: 'Beschrijf hoe de client reageert op de interventies en acties die zijn uitgevoerd.', options: [], field_type: 'open_text' },
+      { title: 'Plan', prompt: 'Beschrijf de geplande acties, doelen en interventies voor de client', options: [], field_type: 'open_text' },
+    ],
+  },
+  leefgebied: {
+    label: 'Leefgebiedrapportage',
+    content: [
+      { title: 'Persoonlijk / psychisch functioneren', prompt: 'Beschrijf de gemoedstoestand (emoties, stemming, affect) én het psychisch functioneren (cognitie, realiteitsbesef, impulscontrole, ziekte-inzicht) van de cliënt, inclusief eventuele incongruentie tussen wat de cliënt zegt en wat wordt geobserveerd. Concreet gedrag, motivatie en medicatiegebruik vallen onder andere leefgebieden.', options: [], field_type: 'open_text' },
+      { title: 'Werk / opleiding / dagbesteding', prompt: "Beschrijf de deelname van de cliënt aan werk, vrijwilligerswerk, opleiding, re-integratietraject of dagbesteding: aanwezigheid, motivatie, werkhouding en contact met betrokken instanties (bijv. UWV). Vrijetijdsbesteding en hobby's vallen onder 'Daginvulling/tijdsbesteding'.", options: [], field_type: 'open_text' },
+      { title: 'Daginvulling / tijdsbesteding', prompt: "Beschrijf hoe de cliënt de dag, avond en het weekend structureert en invult (huishouden, hobby's, passieve tijdsbesteding, sociale/vrijetijdsactiviteiten), en signaleer gebrek aan structuur, verveling of doelloosheid. Werk, opleiding en betaalde dagbesteding vallen onder 'Werk/opleiding/dagbesteding'.", options: [], field_type: 'open_text' },
+      { title: 'Huisvesting', prompt: 'Beschrijf het type woonvorm, de stabiliteit van de huisvesting (bijv. dreigende huisuitzetting, verhuisplannen), de staat van de woning (schoon/vervuild/onderhoud/veiligheid) en het contact met verhuurder of woningbouw. Huishoudelijke vaardigheden en financiële huurproblemen vallen onder andere leefgebieden.', options: [], field_type: 'open_text' },
+      { title: 'Financiën', prompt: 'Beschrijf de inkomsten, het financieel beheer (zelfstandig, bewindvoering, budgetbeheer), eventuele schulden of betalingsachterstanden en het contact met betrokken instanties (bewindvoerder, schuldhulpverlening, gemeente).', options: [], field_type: 'open_text' },
+      { title: 'Huiselijke Relaties', prompt: "Beschrijf de kwaliteit van de relaties met partner, gezin en huisgenoten (steun, spanningen, conflicten, afhankelijkheid) en signaleer nadrukkelijk elke aanwijzing voor huiselijk geweld, dreiging of onveiligheid thuis. Algemene sociale contacten buiten het huishouden vallen onder 'Sociaal Netwerk'.", options: [], field_type: 'open_text' },
+      { title: 'Lichamelijke Gezondheid', prompt: 'Beschrijf fysieke klachten, medische diagnoses, medicatiegebruik en therapietrouw, contact met medische zorg (huisarts, specialist, fysiotherapie) en leefstijlfactoren (voeding, beweging, hygiëne). Psychische klachten en middelengebruik als gedragskeuze vallen onder andere leefgebieden.', options: [], field_type: 'open_text' },
+      { title: 'Middelengebruik', prompt: 'Beschrijf het gebruik van alcohol, drugs of andere middelen: welk middel, frequentie, context, controle over gebruik en gevolgen voor het functioneren. Vermeld betrokkenheid van verslavingszorg en signaleer expliciet incongruentie (bijv. cliënt ontkent gebruik maar begeleider observeert signalen).', options: [], field_type: 'open_text' },
+      { title: 'Basale-ADL', prompt: 'Evalueer de zelfstandigheid bij basisactiviteiten zoals wassen, aankleden en eten.', options: [], field_type: 'open_text' },
+      { title: 'Instrumentele-ADL', prompt: 'Beschrijf de zelfstandigheid bij complexe taken zoals koken, boodschappen en administratie.', options: [], field_type: 'open_text' },
+      { title: 'Sociaal Netwerk', prompt: "Beschrijf de contacten van de cliënt met vrienden, kennissen en buren buiten de huiselijke leefomgeving: kwaliteit, frequentie, steun of negatieve invloed, en eventueel sociaal isolement. Partner, gezin en huisgenoten vallen onder 'Huiselijke Relaties', niet hier.", options: [], field_type: 'open_text' },
+      { title: 'Justitie', prompt: 'Beschrijf de justitiële titel of maatregel (bijv. reclasseringstoezicht, meldplicht), de specifieke voorwaarden, of de cliënt zich hieraan houdt (overtredingen, waarschuwingen) en het contact met justitiële instanties. Vermeld effecten op ander functioneren alleen wanneer dit direct aan een voorwaarde gekoppeld is.', options: [], field_type: 'open_text' },
+      { title: 'Acties en Opvolging', prompt: 'Noteer concreet de afgesproken acties, interventies en vervolgstappen: wie is verantwoordelijk en binnen welke termijn. Signaleer wanneer een beschreven probleem geen gekoppelde actie heeft.', options: [], field_type: 'open_text' },
+      { title: 'Incidenten en/of calamiteiten', prompt: 'Vermeld incidenten of calamiteiten: agressie/geweld, veiligheidsincidenten (escalatie, politie), zelfbeschadiging of suïcidale uitspraken/pogingen, en overige gevaarlijke situaties. Geef aan of het een incident (beperkte impact) of calamiteit (ernstige/levensbedreigende impact) betreft, inclusief VIM-meldingen.', options: [], field_type: 'open_text' },
+      { title: 'Recidive risico', prompt: 'Geef een inschatting van het recidiverisico: benoem risicofactoren (bijv. middelengebruik, negatief netwerk, impulsiviteit) én beschermende factoren (bijv. stabiele huisvesting, motivatie, behandelbereidheid), en beschrijf welke interventies worden ingezet om dit risico te verlagen.', options: [], field_type: 'open_text' },
+    ],
+  },
+  rapportage: {
+    label: 'Rapportage',
+    content: [
+      { title: 'Rapportage', prompt: "Write a clear and concise care report based on the provided information. Focus on relevant observations, the client's current situation, actions taken, and any notable changes. Use objective and professional language. Do not add assumptions or information that is not provided. Structure the report as a coherent narrative suitable for professional care documentation.", options: null, field_type: 'open_text' },
+    ],
+  },
+};
+
 const SKIP_SEED_KEYS = new Set([
   'db_name', 'mode_locked', 'id_locked', 'table_catalog',
   'selected_tables', 'route_reason', 'sql_history_context',
@@ -469,7 +570,21 @@ function toast(msg, kind) {
 }
 
 function chatName() { return document.getElementById('chat-name').value; }
-function preset(name) { return CHAT_PRESETS[name || chatName()] || { defaults: {}, oneShot: ['scope'], scopes: {} }; }
+function preset(name) {
+  const key = name || chatName();
+  if (key.startsWith(REPORT_CHAT_PREFIX)) return REPORT_PRESET;
+  return CHAT_PRESETS[key] || { defaults: {}, oneShot: ['scope'], scopes: {} };
+}
+function isReportChat(name) {
+  const p = preset(name);
+  return (p.sticky || []).includes('content') && (p.roundTrip || []).includes('sections');
+}
+function cloneJson(v) { return JSON.parse(JSON.stringify(v ?? null)); }
+function sectionStats(sections) {
+  const list = Array.isArray(sections) ? sections : [];
+  const filled = list.filter(s => String(s && s.answer != null ? s.answer : '').trim()).length;
+  return { total: list.length, filled, list };
+}
 function slot(name) {
   const key = name || chatName();
   if (!state.byChat[key]) state.byChat[key] = { vars: null, sessionId: null, usedScopes: [] };
@@ -601,22 +716,90 @@ function toggleJson() {
 
 function onJsonEdit() {
   try {
-    slot().vars = JSON.parse(document.getElementById('vars-json').value || '{}');
+    const parsed = JSON.parse(document.getElementById('vars-json').value || '{}');
+    slot().vars = parsed;
+    if (isReportChat()) {
+      slot().reportTemplate = null;
+      if (!slot().sessionId && parsed.sections !== undefined) {
+        slot().sectionsBaseline = cloneJson(parsed.sections);
+      }
+    }
     persist();
     renderVarFields(true);
   } catch { /* keep typing */ }
 }
 
 function resetVars() {
-  writeVars(seedVars(chatName()));
+  const seeded = seedVars(chatName());
+  if (isReportChat()) slot().sectionsBaseline = cloneJson(seeded.sections ?? []);
+  writeVars(seeded);
   toast('Vars reset for ' + chatName());
+}
+
+function commitReportJson(key, el) {
+  const err = el.parentElement.querySelector('.json-err');
+  let parsed;
+  try {
+    parsed = JSON.parse(el.value);
+  } catch {
+    if (err) err.textContent = 'Invalid JSON — not applied';
+    return;
+  }
+  if (err) err.textContent = '';
+  if (key === 'content') slot().reportTemplate = null;
+  if (key === 'sections' && !slot().sessionId) {
+    slot().sectionsBaseline = cloneJson(parsed);
+  }
+  setVar(key, parsed);
+}
+
+function emptySections(content) {
+  return (content || []).map(item => ({ title: item.title, answer: '' }));
+}
+
+function applyReportTemplate(id) {
+  const tpl = REPORT_TEMPLATES[id];
+  if (!tpl) return;
+  const content = cloneJson(tpl.content);
+  const sections = emptySections(content);
+  const s = slot();
+  s.reportTemplate = id;
+  s.sectionsBaseline = cloneJson(sections);
+  s.sectionsUpdatedAt = 0;
+  writeVars({ ...currentVars(), content, sections });
+  toast(tpl.label + ' loaded');
+}
+
+function toggleSectionsJson() {
+  const s = slot();
+  s.sectionsJsonOpen = !s.sectionsJsonOpen;
+  persist();
+  renderVarFields();
+}
+
+function restoreStartSections() {
+  const s = slot();
+  const base = s.sectionsBaseline !== undefined ? s.sectionsBaseline : [];
+  setVar('sections', cloneJson(base));
+  toast('sections restored to the session start');
 }
 
 function renderVarFields(skipJson) {
   const name = chatName();
+  document.getElementById('workspace').classList.toggle('report-mode', isReportChat(name));
+  const composer = document.getElementById('composer-hint');
+  if (composer) {
+    composer.textContent = isReportChat(name)
+      ? 'Sends content unchanged and the latest sections'
+      : 'Sends chat.run over the selected env queue';
+  }
   const v = currentVars();
   const def = defs[name] || {};
   const p = preset(name);
+  if (isReportChat(name)) {
+    renderReportVars(v, skipJson);
+    return;
+  }
   const extract = def.extract_vars || Object.keys(v);
   const used = new Set(slot().usedScopes || []);
   const box = document.getElementById('var-fields');
@@ -663,6 +846,58 @@ function renderVarFields(skipJson) {
   }
 }
 
+function renderReportVars(v, skipJson) {
+  const content = Array.isArray(v.content) ? v.content : [];
+  const stats = sectionStats(v.sections);
+  const s = slot();
+  const fresh = s.sectionsUpdatedAt && (Date.now() - s.sectionsUpdatedAt < 1600);
+  const jsonOn = !!s.sectionsJsonOpen;
+  const blocks = stats.list.map(sec => {
+    const title = esc((sec && sec.title) || '(no title)');
+    const answer = String(sec && sec.answer != null ? sec.answer : '').trim();
+    const body = answer
+      ? `<p>${esc(sec.answer)}</p>`
+      : `<p class="empty">—</p>`;
+    return `<article class="report-block"><h3>${title}</h3>${body}</article>`;
+  }).join('');
+  const report = stats.list.length
+    ? `<div class="report-doc${fresh ? ' fresh' : ''}">${blocks}</div>`
+    : `<div class="hint">No sections yet. Pick a template, or open the settings icon to paste JSON.</div>`;
+  const picked = s.reportTemplate;
+  const chips = Object.entries(REPORT_TEMPLATES).map(([id, tpl]) =>
+    `<button class="chip${picked === id ? ' on' : ''}" onclick="applyReportTemplate('${id}')">${esc(tpl.label)}</button>`
+  ).join('');
+  const gear = `<button class="icon-btn${jsonOn ? ' on' : ''}" title="Edit content and sections JSON" onclick="toggleSectionsJson()" aria-label="Edit JSON">` +
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">` +
+    `<circle cx="12" cy="12" r="3"></circle>` +
+    `<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>` +
+    `</svg></button>`;
+  const jsonPanel = jsonOn
+    ? `<div class="json-panel">` +
+      `<div class="hint">content <span class="badge sticky">fixed</span> · ${content.length} template field${content.length === 1 ? '' : 's'}</div>` +
+      `<div class="hint">Sent on every turn. Replies do not change it.</div>` +
+      `<textarea class="in report-json" spellcheck="false" onchange="commitReportJson('content', this)">${esc(JSON.stringify(v.content ?? [], null, 2))}</textarea>` +
+      `<div class="json-err"></div>` +
+      `<div class="hint" style="margin-top:10px">sections JSON</div>` +
+      `<textarea class="in report-json${fresh ? ' fresh' : ''}" spellcheck="false" onchange="commitReportJson('sections', this)">${esc(JSON.stringify(v.sections ?? [], null, 2))}</textarea>` +
+      `<div class="json-err"></div>` +
+      `<div class="row" style="margin-top:6px"><button class="mbtn" onclick="restoreStartSections()">Restore start sections</button></div>` +
+      `</div>`
+    : '';
+  const box = document.getElementById('var-fields');
+  box.innerHTML =
+    `<div class="hint">template</div><div class="chips">${chips}</div>` +
+    `<div class="sec-head">` +
+      `<div class="hint">sections <span class="badge live">round-trip</span> · ${stats.filled}/${stats.total} answered${fresh ? ' · updated' : ''}</div>` +
+      gear +
+    `</div>` +
+    report +
+    jsonPanel;
+  if (!skipJson && jsonOpen) {
+    document.getElementById('vars-json').value = JSON.stringify(v, null, 2);
+  }
+}
+
 function pickScope(scope) {
   if ((slot().usedScopes || []).includes(scope)) return;
   setVar('scope', scope);
@@ -692,10 +927,16 @@ function newSession() {
   const s = slot();
   s.sessionId = null;
   s.usedScopes = [];
+  s.sectionsUpdatedAt = 0;
+  if (isReportChat() && s.sectionsBaseline !== undefined) {
+    s.vars = { ...currentVars(), sections: cloneJson(s.sectionsBaseline) };
+  }
   persist();
   showSession();
   renderVarFields();
-  clearThread('New session. First send creates a session_id.');
+  clearThread(isReportChat()
+    ? 'New session. content stays. sections is back to the start value. First send creates a session_id.'
+    : 'New session. First send creates a session_id.');
   toast('Session cleared for ' + chatName());
 }
 
@@ -734,14 +975,22 @@ async function onChatChange() {
     defs[name] = def;
     const s = slot(name);
     if (!s.vars) s.vars = seedVars(name);
-    document.getElementById('chat-hint').textContent =
-      (def.description || name) +
-      ((def.extract_vars || []).length ? ' · ' + def.extract_vars.join(', ') : ' · no extract_vars');
+    if (isReportChat(name)) {
+      if (!Array.isArray(s.vars.content)) s.vars.content = [];
+      if (!Array.isArray(s.vars.sections)) s.vars.sections = [];
+      if (s.sectionsBaseline === undefined) s.sectionsBaseline = cloneJson(s.vars.sections);
+    }
+    document.getElementById('chat-hint').textContent = isReportChat(name)
+      ? 'content stays fixed for the session. sections is sent each turn and replaced by the reply.'
+      : (def.description || name) +
+        ((def.extract_vars || []).length ? ' · ' + def.extract_vars.join(', ') : ' · no extract_vars');
     renderVarFields();
     showSession();
     clearThread(s.sessionId
       ? 'This chat has a saved session. Load history, or just send to continue.'
-      : 'Vars belong to this chat only. Type like a user.');
+      : (isReportChat(name)
+        ? 'Set content and the starting sections, then type like a user. sections updates after each reply.'
+        : 'Vars belong to this chat only. Type like a user.'));
     persist();
   } catch (e) {
     document.getElementById('chat-hint').textContent = String(e);
@@ -835,8 +1084,24 @@ function hideTyping() {
 
 function applyReturned(reply) {
   const p = preset();
-  const next = { ...currentVars(), ...(reply?.vars || {}) };
+  const incoming = { ...(reply?.vars || {}) };
+  (p.sticky || []).forEach(k => { delete incoming[k]; });
+  if (isReportChat() && incoming.sections !== undefined) {
+    incoming.sections = cloneJson(incoming.sections);
+  }
+  const next = { ...currentVars(), ...incoming };
   (p.oneShot || ['scope']).forEach(k => { delete next[k]; });
+  if (isReportChat() && incoming.sections !== undefined) {
+    slot().sectionsUpdatedAt = Date.now();
+    const stats = sectionStats(incoming.sections);
+    toast('sections updated · ' + stats.filled + '/' + stats.total + ' answered');
+    setTimeout(() => {
+      if (!isReportChat()) return;
+      const active = document.activeElement;
+      if (active && active.classList && active.classList.contains('report-json')) return;
+      renderVarFields();
+    }, 1700);
+  }
   writeVars(next);
 }
 
@@ -859,6 +1124,10 @@ function onKey(ev) {
 
 async function sendTurn() {
   if (sending) return;
+  const active = document.activeElement;
+  if (active && active.classList && active.classList.contains('report-json')) {
+    active.dispatchEvent(new Event('change'));
+  }
   const message = document.getElementById('msg').value;
   const vars = currentVars();
   const s = slot();
@@ -880,10 +1149,14 @@ async function sendTurn() {
   showTyping();
   const t0 = performance.now();
 
+  const hadSession = !!s.sessionId;
   try {
     const reply = await rpc('chat.run', sent);
     const elapsed = Math.round(performance.now() - t0);
     if (reply?.session_id) s.sessionId = reply.session_id;
+    if (isReportChat() && !hadSession) {
+      s.sectionsBaseline = cloneJson(vars.sections ?? []);
+    }
     if (vars.scope) s.usedScopes = [...new Set([...(s.usedScopes || []), vars.scope])];
     persist();
     showSession();
