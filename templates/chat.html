@@ -411,6 +411,7 @@
   <nav class="view-switch">
     <a class="vs" href="/">RPC</a>
     <a class="vs on" href="/chat">Chat</a>
+    <a class="vs" href="/queues">Queues</a>
   </nav>
 </div>
 
@@ -507,18 +508,12 @@
 const STORE = 'mysoly-chat-playground-v2';
 const CHAT_PRESETS = {
   careons_work_status_v2: {
-    defaults: { mode: 'general' },
+    defaults: {},
     oneShot: ['scope'],
-    idKey: 'id',
-    peopleKey: 'employees',
     scopes: {
-      general: [
+      any: [
         'employee_count', 'employee_with_most_clients',
         'employees_on_leave_today', 'top_reporting_employee_today',
-      ],
-      specific: [
-        'employee_caseload', 'employee_agenda_week',
-        'employee_reports_month', 'employee_travel_week',
       ],
     },
   },
@@ -576,7 +571,7 @@ const REPORT_TEMPLATES = {
   leefgebied: {
     label: 'Leefgebiedrapportage',
     content: [
-      { title: 'Persoonlijk / psychisch functioneren', prompt: 'Gemoedstoestand en psychisch functioneren van de cliënt, zoals de begeleider waarnam of de cliënt zelf verwoordde: stemming en emotie (somber, gespannen, angstig, boos, rustig, piekeren, stress), stemmingswisselingen, affect; psychiatrische symptomen (depressieve klachten, angst, achterdocht, wanen, verwardheid), realiteitsbesef, concentratie en overzicht, impulscontrole en emotieregulatie, ziekte-inzicht en reflectie, en hoe de cliënt met spanning omgaat. Benoem incongruentie wanneer de bron die beschrijft (cliënt zegt dat het goed gaat, begeleider ziet somberheid). Dit is de hoofdsectie: hoort een gegeven bij meer dan één leefgebied, schrijf het hier en noem het niet nogmaals elders. Niet hier: slaap en lichamelijke klachten (Lichamelijke Gezondheid), middelengebruik, conflicten met anderen. Geen diagnose of oorzaak die de bron niet noemt.', options: [], field_type: 'open_text' },
+      { title: 'Persoonlijk / psychisch functioneren', prompt: 'Gemoedstoestand en psychisch functioneren van de cliënt, zoals de begeleider waarnam of de cliënt zelf verwoordde: stemming en emotie (somber, verdrietig, angstig, gespannen, boos, prikkelbaar, rustig, vrolijk), stabiel of wisselend, affect en waaruit dit blijkt; psychiatrische symptomen (depressieve klachten, angst, achterdocht, wanen, hallucinaties, verwardheid), realiteitsbesef, concentratie, geheugen en overzicht, impulscontrole, ziekte-inzicht en reflectie, omgaan met spanning. Benoem incongruentie wanneer de bron die beschrijft. Dit is de hoofdsectie. Is de rapportage kort of gaat zij over één samenhangende situatie, schrijf dan het hele verhaal hier als één geheel in oorzaak en gevolg (setting en aanleiding, wat er speelt, wat dit met de cliënt doet, wat hij wil) en splits het niet over andere leefgebieden. Uitzondering: Acties en Opvolging, Incidenten en Recidive risico vul je altijd apart in. Geen diagnose of oorzaak die de bron niet noemt.', options: [], field_type: 'open_text' },
       { title: 'Werk / opleiding / dagbesteding', prompt: 'Deelname aan betaald werk, vrijwilligerswerk, opleiding, re-integratie of dagbesteding: aanwezigheid, afwezigheid en ziekmeldingen, te laat komen, motivatie, werkhouding, nakomen van afspraken, starten of stoppen met een traject, succeservaringen en problemen, en contact met UWV, opleiding of dagbesteding. Niet hier: financiële gevolgen, sociale contacten, psychische klachten. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
       { title: 'Daginvulling / tijdsbesteding', prompt: "Hoe de cliënt de dag, avond en het weekend invult: dagritme en regelmaat of het ontbreken daarvan, een omgekeerd dag-nachtritme; hobby's, sport en huishoudelijke activiteiten als vaste invulling van de dag; passieve tijdsbesteding (veel slapen, op bed liggen, tv, gamen, niets doen); verveling, leegte of doelloos rondhangen. Niet hier: werk of opleiding, de relaties zelf, een psychische oorzaak. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.", options: [], field_type: 'open_text' },
       { title: 'Huisvesting', prompt: 'Woonsituatie en de stabiliteit, veiligheid en geschiktheid ervan: woonvorm (eigen woning, begeleid wonen, kamer, inwonend, opvang), stabiel of tijdelijk verblijf, verhuisplannen, urgentie, dreigende huisuitzetting; staat van de woning (schoon, vervuild, rommelig, onderhoud, (on)veilig); omgang met de woning (overlast veroorzaken, verwaarlozing); contact, waarschuwingen of conflicten met verhuurder of woningbouw. Niet hier: huurachterstand als geldprobleem (Financiën), conflicten met buren (Sociaal Netwerk), huishoudelijke vaardigheden. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
@@ -589,8 +584,9 @@ const REPORT_TEMPLATES = {
       { title: 'Sociaal Netwerk', prompt: 'Contacten buiten het huishouden (vrienden, kennissen, buren): steunend of belemmerend, positieve of negatieve invloed, een risicovol netwerk of contact met oude vrienden uit een crimineel circuit, conflicten of overlast met buren, deelname aan groepen, eenzaamheid, terugtrekken of vermijden van contact. Niet hier: partner, gezin en huisgenoten; werkcontacten; begeleiders en hulpverlening. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
       { title: 'Justitie', prompt: 'Justitiële titel of maatregel (voorwaardelijke straf, reclasseringstoezicht, bijzondere voorwaarden, ISD, schorsingsvoorwaarden), voorwaarden (meldplicht, locatiegebod, contactverbod, middelenverbod, behandelverplichting), naleving en overtredingen, waarschuwingen, contact met reclassering, DJI of toezichthouder, en zittingen of beslissingen van de rechtbank. Niet hier: middelengebruik, gedrag of huisvesting zelf, tenzij direct gekoppeld aan een voorwaarde. Alleen wanneer de bron iets specifieks zegt over dit leefgebied. Een persoon, bezoek of activiteit die alleen genoemd wordt, is context en hoort in de hoofdsectie.', options: [], field_type: 'open_text' },
       { title: 'Acties en Opvolging', prompt: 'Wat er na dit contact gedaan wordt: een vervolgafspraak, contact met een ketenpartner, bespreken in het team, een doorverwijzing, een actie die de cliënt gaat doen, gezamenlijke afspraken of een evaluatiemoment, met wie en wanneer, voor zover de bron dat noemt. Wat al tijdens dit contact gebeurde, hoort in zijn eigen sectie. Niet hier: observaties, risico-inschatting en justitiële verplichtingen. Bedenk geen actie die de bron niet noemt.', options: [], field_type: 'open_text' },
-      { title: 'Incidenten en/of calamiteiten', prompt: 'Een concrete onverwachte gebeurtenis met risico voor veiligheid, gezondheid of welzijn: verbale of fysieke agressie, bedreiging, intimidatie, escalatie, politie betrokken, crisis, zelfverwonding, suïcidale uitspraken of een poging, vermissing, ernstige vervuiling of een gevaarlijke situatie in de woning, of een ernstige overtreding of terugval met direct risico. Een gewone ruzie of zorg zonder escalatie hoort bij Huiselijke Relaties of Sociaal Netwerk. Incident: beperkte impact, geen blijvende schade. Calamiteit: alleen bij ernstige schade, levensgevaar of een structureel veiligheidsrisico dat de bron beschrijft. Schrijf niet dat er geen incidenten waren.', options: [], field_type: 'open_text' },
-      { title: 'Recidive risico', prompt: 'Vul deze sectie alleen wanneer de bron een van deze vijf signalen beschrijft: toename van spanningen (hoog in de emotie, bang voor eigen agressie), terugval in middelengebruik (opnieuw gebruikt), verlies van structuur (werk, dagbesteding of dagritme weggevallen), negatief netwerk (de bron noemt het netwerk crimineel of slecht van invloed), of overtreden voorwaarden. Beschrijf het signaal in de woorden van de bron en schrijf daarna: "Dit wijst op een verhoogd recidiverisico." Noem een beschermende stap alleen wanneer de bron die geeft (zich weerhouden van gebruik, zelf hulp zoeken, de spanning bespreken met de begeleider). Zonder een van deze signalen blijft deze sectie leeg: beschermende factoren of een begeleidingsgesprek alleen vullen haar niet. Nooit "hoog", nooit een voorspelling van een delict, nooit een signaal dat de bron niet geeft.', options: [], field_type: 'open_text' },
+      { title: 'Incidenten en/of calamiteiten', prompt: 'Een concrete onverwachte gebeurtenis met risico voor veiligheid, gezondheid of welzijn: verbale of fysieke agressie, bedreiging, intimidatie, escalatie, politie betrokken, crisis, zelfverwonding, suïcidale uitspraken of een poging, vermissing, ernstige vervuiling of een gevaarlijke situatie in de woning, of een ernstige overtreding of terugval met direct risico. Een gewone ruzie of zorg zonder escalatie is geen incident en blijft in zijn eigen leefgebied. Incident: beperkte impact, geen blijvende schade. Calamiteit: alleen bij ernstige schade, levensgevaar of een structureel veiligheidsrisico dat de bron beschrijft. Schrijf niet dat er geen incidenten waren.', options: [], field_type: 'open_text' },
+      { title: 'Risicofactoren', prompt: 'Haal uit de rapportage alleen de duidelijk aanwezige risicofactoren. Een risicofactor is een concrete gebeurtenis, omstandigheid of gedrag met een in de rapportage beschreven negatief effect op de cliënt. Dit negatieve effect moet in de tekst staan: leid geen emoties of gevolgen af die er niet staan. Schrijf per factor één concrete zin in de vorm: oorzaak met de aanleiding erbij, waardoor gevolg voor de cliënt. Een emotie zoals angst of spanning is altijd het gevolg, nooit de oorzaak. Alles wat bij dezelfde situatie hoort, zet je samen in één zin: maak er geen aparte factoren van. Hulp zoeken, overleggen met de begeleider of een plan bespreken is geen risicofactor. Gebruik alleen informatie uit de rapportage en neem termen zoals "vermeende" of "mogelijk" letterlijk over. Probeer niet het aantal factoren te verhogen. Als er geen factor is: "- Niet benoemd in rapportage." Output alleen een lijst met "- " per regel.', options: [], field_type: 'open_text' },
+      { title: 'Beschermende factoren', prompt: 'Haal uit de rapportage alleen de duidelijk aanwezige beschermende factoren. Neem ook impliciete factoren mee, zoals zelf contact zoeken met de begeleider om over angst, zorgen of een probleem te praten. Gebruik alleen informatie uit de rapportage, neem termen zoals “vermeende” of “mogelijk” letterlijk over en schrijf per factor één korte, concrete zin. Maak geen onnodige, dubbele of vergelijkbare factoren aan en probeer niet het aantal factoren te verhogen. Als er geen factor is: “- Niet benoemd in rapportage.” Output alleen een lijst met “- ” per regel.', options: [], field_type: 'open_text' },
     ],
   },
   rapportage: {
@@ -901,7 +897,7 @@ function renderVarFields(skipJson) {
   const box = document.getElementById('var-fields');
   let html = '';
 
-  if (extract.includes('mode') || 'mode' in v) {
+  if (extract.includes('mode')) {
     html += `<div class="hint">mode</div><div class="chips">
       <button class="chip${v.mode === 'general' ? ' on' : ''}" onclick="setVar('mode','general')">general</button>
       <button class="chip${v.mode === 'specific' ? ' on' : ''}" onclick="setVar('mode','specific')">specific</button>
@@ -909,7 +905,7 @@ function renderVarFields(skipJson) {
   }
 
   const idKey = p.idKey || (extract.includes('client_id') ? 'client_id' : (extract.includes('id') ? 'id' : null));
-  if (idKey) {
+  if (idKey && extract.includes(idKey)) {
     html += `<div class="field" style="margin-top:8px"><label>${idKey}</label>
       <input class="in" value="${esc(v[idKey] ?? '')}" onchange="setVar('${idKey}', this.value || null)" placeholder="locked after you pick a search hit"/></div>`;
   }
@@ -1056,6 +1052,9 @@ async function onChatChange() {
     defs[name] = def;
     const s = slot(name);
     if (!s.vars) s.vars = seedVars(name);
+    const extract = def.extract_vars || [];
+    if (!extract.includes('mode')) delete s.vars.mode;
+    if (!extract.includes('id')) delete s.vars.id;
     if (isReportChat(name)) {
       if (!Array.isArray(s.vars.content)) s.vars.content = [];
       if (!Array.isArray(s.vars.sections)) s.vars.sections = [];

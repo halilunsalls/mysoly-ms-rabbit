@@ -2,7 +2,9 @@ import asyncio
 import json
 import logging
 import os
+import re
 import uuid
+from datetime import timezone
 from contextlib import asynccontextmanager
 from typing import Any
 from fastapi.responses import FileResponse
@@ -136,6 +138,57 @@ class SendRequest(BaseModel):
     env_prefix: str = ""
 
 
+class QueueRunRequest(BaseModel):
+    pipeline: str = "careons_take_plan"
+    text: str = ""
+    prod_name: str = "careons"
+    service: str = "ms_flow"
+    env_prefix: str = ""
+    dry_run: bool = False
+
+
+class QueuePeekRequest(BaseModel):
+    pipeline: str = "careons_take_plan"
+    service: str = "ms_flow"
+    env_prefix: str = ""
+    which: str = "publish"
+    limit: int = 20
+
+
+class QueueConsumeRequest(BaseModel):
+    pipeline: str = "careons_take_plan"
+    service: str = "ms_flow"
+    env_prefix: str = ""
+    correlation_id: str = ""
+    limit: int = 50
+
+
+_QUEUE_STEM = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+
+
+def _message_stamp(message: aio_pika.IncomingMessage) -> str | None:
+    stamp = message.timestamp
+    if stamp is None:
+        return None
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=timezone.utc)
+    return stamp.isoformat()
+
+
+def _dedicated_names(service: str, env_prefix: str, pipeline: str) -> tuple[str, str]:
+    service_name = service.strip() or "ms_flow"
+    env_name = env_prefix.strip() or "prod"
+    pipe = pipeline.strip()
+    for label, value in (("service", service_name), ("env", env_name), ("pipeline", pipe)):
+        if not _QUEUE_STEM.match(value):
+            raise HTTPException(
+                status_code=422,
+                detail=f"{label} '{value}' is not a valid queue stem",
+            )
+    stem = f"{service_name}_{env_name}_{pipe}"
+    return f"{stem}_listen", f"{stem}_publish"
+
+
 class ConfigUpdate(BaseModel):
     host: str | None = None
     port: int | None = None
@@ -157,6 +210,14 @@ async def index(request: Request):
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_playground(request: Request):
     return templates.TemplateResponse("chat.html", {
+        "request": request,
+        "config": config.to_dict(),
+    })
+
+
+@app.get("/queues", response_class=HTMLResponse)
+async def queue_playground(request: Request):
+    return templates.TemplateResponse("queues.html", {
         "request": request,
         "config": config.to_dict(),
     })
@@ -288,6 +349,176 @@ async def send_message(req: SendRequest):
         raise HTTPException(status_code=503, detail=f"RabbitMQ connection failed: {e}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/queue/run")
+async def queue_run(req: QueueRunRequest):
+    """Publish one actie string. Does not read the publish queue."""
+    listen, publish = _dedicated_names(req.service, req.env_prefix, req.pipeline)
+    run_id = str(uuid.uuid4())
+    envelope = {
+        "pattern": "run",
+        "data": {
+            "prod_name": req.prod_name.strip() or "default",
+            "run_id": run_id,
+            "dry_run": req.dry_run,
+            "input": {"text": req.text},
+        },
+    }
+    body = json.dumps(envelope).encode()
+
+    try:
+        conn = await aio_pika.connect_robust(config.dsn())
+        async with conn:
+            channel = await conn.channel()
+            await channel.declare_queue(listen, durable=True)
+            await channel.default_exchange.publish(
+                aio_pika.Message(
+                    body=body,
+                    correlation_id=run_id,
+                    delivery_mode=aio_pika.DeliveryMode.PERSISTENT,
+                ),
+                routing_key=listen,
+            )
+    except HTTPException:
+        raise
+    except aio_pika.exceptions.AMQPConnectionError as exc:
+        raise HTTPException(status_code=503, detail=f"RabbitMQ connection failed: {exc}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {
+        "success": True,
+        "listen_queue": listen,
+        "publish_queue": publish,
+        "run_id": run_id,
+        "envelope_sent": envelope,
+    }
+
+
+@app.post("/api/queue/peek")
+async def queue_peek(req: QueuePeekRequest):
+    """Show messages without removing them. Each one is nacked back onto the queue."""
+    listen, publish = _dedicated_names(req.service, req.env_prefix, req.pipeline)
+    which = req.which.strip().lower()
+    if which not in {"listen", "publish"}:
+        raise HTTPException(status_code=422, detail="which must be listen or publish")
+    queue_name = listen if which == "listen" else publish
+    limit = max(1, min(req.limit, 50))
+    messages: list[dict] = []
+    held: list[aio_pika.IncomingMessage] = []
+
+    try:
+        conn = await aio_pika.connect_robust(config.dsn())
+        async with conn:
+            channel = await conn.channel()
+            try:
+                queue = await channel.declare_queue(queue_name, passive=True)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Queue '{queue_name}' was not found: {exc}",
+                ) from exc
+            declared = getattr(queue, "declaration_result", None)
+            message_count = getattr(declared, "message_count", None)
+            consumer_count = getattr(declared, "consumer_count", None)
+            for _ in range(limit):
+                message = await queue.get(fail=False)
+                if message is None:
+                    break
+                held.append(message)
+                raw = message.body.decode("utf-8", errors="replace")
+                try:
+                    body_json = json.loads(raw)
+                except json.JSONDecodeError:
+                    body_json = None
+                messages.append({
+                    "correlation_id": message.correlation_id,
+                    "timestamp": _message_stamp(message),
+                    "body": body_json if body_json is not None else raw,
+                })
+            for pending in held:
+                await pending.nack(requeue=True)
+    except HTTPException:
+        raise
+    except aio_pika.exceptions.AMQPConnectionError as exc:
+        raise HTTPException(status_code=503, detail=f"RabbitMQ connection failed: {exc}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    return {
+        "success": True,
+        "queue": queue_name,
+        "which": which,
+        "message_count": message_count,
+        "consumer_count": consumer_count,
+        "shown": len(messages),
+        "requeued": True,
+        "messages": messages,
+    }
+
+
+@app.post("/api/queue/consume")
+async def queue_consume(req: QueueConsumeRequest):
+    """Ack one message on the publish queue. Every other message is nacked back."""
+    _listen, publish = _dedicated_names(req.service, req.env_prefix, req.pipeline)
+    target = req.correlation_id.strip()
+    if not target:
+        raise HTTPException(status_code=422, detail="correlation_id is required")
+    limit = max(1, min(req.limit, 50))
+    held: list[aio_pika.IncomingMessage] = []
+    consumed: dict | None = None
+
+    try:
+        conn = await aio_pika.connect_robust(config.dsn())
+        async with conn:
+            channel = await conn.channel()
+            try:
+                queue = await channel.declare_queue(publish, passive=True)
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Queue '{publish}' was not found: {exc}",
+                ) from exc
+            try:
+                for _ in range(limit):
+                    message = await queue.get(fail=False)
+                    if message is None:
+                        break
+                    if consumed is None and (message.correlation_id or "") == target:
+                        raw = message.body.decode("utf-8", errors="replace")
+                        try:
+                            body_json = json.loads(raw)
+                        except json.JSONDecodeError:
+                            body_json = raw
+                        await message.ack()
+                        consumed = {
+                            "correlation_id": message.correlation_id,
+                            "body": body_json,
+                        }
+                    else:
+                        held.append(message)
+            finally:
+                for pending in held:
+                    await pending.nack(requeue=True)
+    except HTTPException:
+        raise
+    except aio_pika.exceptions.AMQPConnectionError as exc:
+        raise HTTPException(status_code=503, detail=f"RabbitMQ connection failed: {exc}")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    if consumed is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No publish message with correlation_id '{target}'",
+        )
+    return {
+        "success": True,
+        "queue": publish,
+        "consumed": True,
+        "message": consumed,
+    }
+
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():

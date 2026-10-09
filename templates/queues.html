@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Queue playground</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: #121216;
+      --surface2: #1c1c22;
+      --border: rgba(255,255,255,.08);
+      --border-strong: rgba(255,255,255,.14);
+      --accent: #ff6b35;
+      --blue: #7cb4ff;
+      --green: #3dd68c;
+      --red: #ff6b6b;
+      --yellow: #f5c451;
+      --purple: #c4b5fd;
+      --text: #f4f4f5;
+      --muted: #8b8b98;
+      --input: #0c0c0f;
+      --shadow: 0 10px 30px rgba(0,0,0,.28);
+      --sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background:
+        radial-gradient(900px 420px at 8% -10%, rgba(255,107,53,.08), transparent 55%),
+        radial-gradient(700px 380px at 100% 0%, rgba(124,180,255,.06), transparent 50%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+    .topbar {
+      height: 58px; display: flex; align-items: center; gap: 12px;
+      padding: 0 14px; flex-shrink: 0;
+      background: rgba(18,18,22,.78);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+    }
+    .brand {
+      display: flex; align-items: center; gap: 8px;
+      font-weight: 700; font-size: .95rem; white-space: nowrap;
+      color: inherit; text-decoration: none; letter-spacing: -.02em;
+    }
+    .brand-mark {
+      width: 26px; height: 26px; border-radius: 8px;
+      display: grid; place-items: center;
+      background: linear-gradient(160deg, #ff8a55, #ff6b35 55%, #e85d2a);
+      color: #fff; font-size: .78rem; font-weight: 700;
+      box-shadow: 0 4px 14px rgba(255,107,53,.35);
+    }
+    .brand em { color: var(--accent); font-style: normal; }
+    .tb-cluster {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 6px 4px 10px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+    }
+    .tb-grow { flex: 1; }
+    .lbl { font-size: .62rem; color: var(--muted); font-weight: 700;
+           letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+    .tb-in {
+      background: var(--input); border: 1px solid transparent;
+      border-radius: 999px; color: var(--text);
+      font-size: .78rem; padding: 0 10px; height: 28px; outline: none;
+      font-family: var(--mono);
+    }
+    .tb-in:focus { border-color: rgba(255,107,53,.55); }
+    #ih { width: 128px; } #ip { width: 64px; }
+    #iu { width: 84px; } #iw { width: 88px; } #iv { width: 56px; }
+    .conn-btn {
+      height: 30px; padding: 0 12px;
+      background: transparent; border: 1px solid var(--border-strong);
+      border-radius: 999px; color: var(--text);
+      font-family: inherit; font-size: .76rem; font-weight: 600; cursor: pointer;
+      text-decoration: none; display: inline-flex; align-items: center;
+    }
+    .conn-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .conn-btn.primary { background: var(--text); color: #111; border-color: transparent; font-weight: 700; }
+    .conn-btn.primary:hover { background: #fff; color: #111; }
+    .view-switch {
+      display: flex; padding: 3px; gap: 2px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid var(--border); border-radius: 999px;
+    }
+    .vs {
+      height: 28px; padding: 0 12px; border-radius: 999px;
+      display: inline-flex; align-items: center;
+      color: var(--muted); text-decoration: none;
+      font-size: .76rem; font-weight: 600;
+    }
+    .vs.on, .vs:hover { color: var(--text); background: var(--surface2); }
+    .vs.on { box-shadow: inset 0 0 0 1px var(--border-strong); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .dot.on { background: var(--green); box-shadow: 0 0 0 4px rgba(61,214,140,.15); }
+    .dot.off { background: var(--red); box-shadow: 0 0 0 4px rgba(255,107,107,.15); }
+    .env-sel {
+      display: flex; gap: 2px; padding: 2px;
+      background: rgba(0,0,0,.28);
+      border: 1px solid var(--border); border-radius: 999px;
+    }
+    .env-opt {
+      padding: 0 10px; height: 24px; background: none; border: none;
+      border-radius: 999px; color: var(--muted);
+      font-family: inherit; font-size: .7rem; font-weight: 600; cursor: pointer;
+    }
+    .env-opt:hover { color: var(--text); }
+    .env-opt.active { background: var(--surface2); box-shadow: inset 0 0 0 1px var(--border-strong); }
+    .env-opt[data-prefix="local"].active { color: var(--blue); }
+    .env-opt[data-prefix="test"].active { color: var(--yellow); }
+    .env-opt[data-prefix="rel"].active { color: var(--purple); }
+    .env-opt[data-prefix="prod"].active { color: var(--green); }
+    .workspace {
+      flex: 1; display: grid; grid-template-columns: 420px 1fr;
+      gap: 12px; padding: 12px; min-height: 0;
+    }
+    .panel {
+      background: rgba(18,18,22,.9);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      display: flex; flex-direction: column;
+      min-height: 0; overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .panel-head {
+      padding: 14px 16px 10px;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-title { font-size: .78rem; font-weight: 700; letter-spacing: .04em; }
+    .body { padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .field input, .field textarea {
+      background: var(--input); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: var(--mono); font-size: .8rem;
+      padding: 8px 10px; outline: none; width: 100%;
+    }
+    .field textarea { min-height: 180px; resize: vertical; line-height: 1.45; }
+    .field input:focus, .field textarea:focus { border-color: rgba(255,107,53,.55); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .send-btn {
+      height: 36px; border: none; border-radius: 999px;
+      background: var(--accent); color: #fff; font-weight: 700;
+      font-family: inherit; cursor: pointer;
+    }
+    .send-btn:disabled, .conn-btn:disabled { opacity: .55; cursor: wait; }
+    .qname {
+      font-family: var(--mono); font-size: .74rem;
+      background: var(--input); border: 1px solid var(--border);
+      border-radius: 10px; padding: 8px 10px;
+      display: flex; justify-content: space-between; gap: 8px;
+    }
+    .qname span { color: var(--muted); font-family: var(--sans); font-size: .68rem; font-weight: 700; letter-spacing: .06em; }
+    .hint { color: var(--muted); font-size: .75rem; line-height: 1.45; }
+    .msgs { display: flex; flex-direction: column; gap: 8px; }
+    .msg {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+    }
+    .msg-head {
+      width: 100%; display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border: none; background: transparent;
+      color: var(--text); font-family: var(--mono); font-size: .78rem;
+      text-align: left; cursor: pointer;
+    }
+    .msg-head:hover { background: rgba(255,255,255,.05); }
+    .msg-head .chev { color: var(--muted); width: 12px; flex-shrink: 0; }
+    .msg-top { display: flex; align-items: center; }
+    .msg-top .msg-head { flex: 1; min-width: 0; }
+    .msg-top .msg-head span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .consume-btn {
+      margin-right: 8px; height: 28px; padding: 0 12px; flex-shrink: 0;
+      border-radius: 999px; border: 1px solid rgba(255,107,107,.45);
+      background: transparent; color: var(--red);
+      font-family: inherit; font-size: .72rem; font-weight: 700; cursor: pointer;
+    }
+    .consume-btn:hover { background: rgba(255,107,107,.12); }
+    .consume-btn:disabled { opacity: .55; cursor: wait; }
+    .msg-body { display: none; padding: 0 10px 10px; }
+    .msg.open .msg-body { display: block; }
+    pre {
+      background: var(--input); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px;
+      font-family: var(--mono); font-size: .72rem; line-height: 1.45;
+      white-space: pre-wrap; word-break: break-word;
+      color: var(--blue);
+    }
+    .status { font-size: .75rem; color: var(--muted); }
+    .status.err { color: var(--red); }
+    .status.ok { color: var(--green); }
+    .empty { color: var(--muted); font-size: .84rem; padding: 24px 4px; }
+  </style>
+</head>
+<body>
+<div class="topbar">
+  <a class="brand" href="/"><span class="brand-mark">M</span><span>my<em>soly</em></span></a>
+  <div class="tb-cluster">
+    <span class="lbl">Broker</span>
+    <input id="ih" class="tb-in" value="{{ config.host }}"/>
+    <input id="ip" class="tb-in" type="number" value="{{ config.port }}"/>
+    <span class="lbl">Auth</span>
+    <input id="iu" class="tb-in" value="{{ config.user }}"/>
+    <input id="iw" class="tb-in" type="password" value="{{ config.password }}" placeholder="password"/>
+    <span class="lbl">VHost</span>
+    <input id="iv" class="tb-in" value="{{ config.vhost }}"/>
+    <button class="conn-btn primary" onclick="connect()">Connect</button>
+    <div class="dot" id="dot"></div>
+  </div>
+  <div class="tb-cluster">
+    <span class="lbl">Env</span>
+    <div class="env-sel">
+      <button class="env-opt active" data-prefix="local" onclick="setPrefix(this)">local</button>
+      <button class="env-opt" data-prefix="test" onclick="setPrefix(this)">test</button>
+      <button class="env-opt" data-prefix="rel" onclick="setPrefix(this)">rel</button>
+      <button class="env-opt" data-prefix="prod" onclick="setPrefix(this)">prod</button>
+    </div>
+  </div>
+  <div class="tb-grow"></div>
+  <nav class="view-switch">
+    <a class="vs" href="/">RPC</a>
+    <a class="vs" href="/chat">Chat</a>
+    <a class="vs on" href="/queues">Queues</a>
+  </nav>
+</div>
+
+<div class="workspace">
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title">Listen</span>
+      <span class="status" id="status">string in, list out</span>
+    </div>
+    <div class="body">
+      <div class="row">
+        <div class="field">
+          <label>Service</label>
+          <input id="service" value="ms_flow" oninput="renderNames()"/>
+        </div>
+        <div class="field">
+          <label>Pipeline</label>
+          <input id="pipeline" value="careons_take_plan" oninput="renderNames()"/>
+        </div>
+      </div>
+      <div class="field">
+        <label>prod_name</label>
+        <input id="prod" value="careons"/>
+      </div>
+      <div class="qname"><span>LISTEN</span><b id="listen-name">ms_flow_local_careons_take_plan_listen</b></div>
+      <div class="qname"><span>PUBLISH</span><b id="publish-name">ms_flow_local_careons_take_plan_publish</b></div>
+      <p class="hint">Send yalnızca listen kuyruğuna yazar. Check mesajı silmez. Publish satırındaki Consume o kaydı kuyruktan alır. Env, worker’daki <code>RABBIT_ENV_PREFIX</code> ile aynı olmalı.</p>
+      <div class="field">
+        <label>Acties text</label>
+        <textarea id="text">De cliënt wil met de begeleider in gesprek over de vermeende diefstal. Cliënt geeft aan de post op 05-10-2026 op te ruimen. Er is een nieuwe afspraak ingepland voor het uitvoeren van een IQ-onderzoek. Vervolgens is er een huisbezoek met cliënt ingepland in de studio.</textarea>
+      </div>
+      <button class="send-btn" id="send" onclick="runQueue()">Send</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <span class="panel-title">Kuyruk</span>
+      <span class="status" id="meta"></span>
+    </div>
+    <div class="body">
+      <div class="row">
+        <button class="conn-btn" id="peek-publish" onclick="peek('publish')">Check Publish</button>
+        <button class="conn-btn" id="peek-listen" onclick="peek('listen')">Check Listen</button>
+      </div>
+      <div id="result">
+        <div class="empty">Send mesajı bırakır. Bakış, kuyrukta duranları gösterir.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let ENV_PREFIX = 'local';
+
+function setPrefix(btn) {
+  ENV_PREFIX = btn.dataset.prefix;
+  document.querySelectorAll('.env-opt').forEach(b => {
+    b.classList.toggle('active', b.dataset.prefix === ENV_PREFIX);
+  });
+  renderNames();
+}
+
+function stem(value, fallback) {
+  const raw = (value || '').trim() || fallback;
+  return raw;
+}
+
+function renderNames() {
+  const service = stem(document.getElementById('service').value, 'ms_flow');
+  const env = stem(ENV_PREFIX, 'prod');
+  const pipeline = stem(document.getElementById('pipeline').value, 'careons_take_plan');
+  const base = `${service}_${env}_${pipeline}`;
+  document.getElementById('listen-name').textContent = `${base}_listen`;
+  document.getElementById('publish-name').textContent = `${base}_publish`;
+}
+
+async function connect() {
+  const body = {
+    host: document.getElementById('ih').value,
+    port: Number(document.getElementById('ip').value),
+    user: document.getElementById('iu').value,
+    password: document.getElementById('iw').value,
+    vhost: document.getElementById('iv').value,
+  };
+  await fetch('/api/config', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body),
+  });
+  try {
+    const r = await fetch('/api/ping');
+    document.getElementById('dot').className = 'dot ' + (r.ok ? 'on' : 'off');
+  } catch {
+    document.getElementById('dot').className = 'dot off';
+  }
+}
+
+function showRaw(title, raw, ok) {
+  const box = document.getElementById('result');
+  const metaEl = document.getElementById('meta');
+  metaEl.textContent = title || '';
+  metaEl.className = 'status ' + (ok ? 'ok' : 'err');
+  box.innerHTML = `<pre>${escapeHtml(JSON.stringify(raw, null, 2))}</pre>`;
+}
+
+function showQueue(data) {
+  const box = document.getElementById('result');
+  const metaEl = document.getElementById('meta');
+  const count = data.message_count == null ? '?' : data.message_count;
+  metaEl.textContent = `${data.queue} · ${count} mesaj · ${data.shown} gösterildi`;
+  metaEl.className = 'status ok';
+  const messages = (data.messages || []).slice().reverse();
+  if (!messages.length) {
+    box.innerHTML = '<div class="empty">Kuyruk boş.</div>';
+    return;
+  }
+  const publish = data.which === 'publish';
+  if (publish) {
+    messages.sort((a, b) => (Date.parse(b.timestamp) || 0) - (Date.parse(a.timestamp) || 0));
+  }
+  box.innerHTML = `<div class="msgs">${messages.map(item => {
+    const rawId = item.correlation_id || '';
+    const label = publish && item.timestamp
+      ? formatStamp(item.timestamp)
+      : (rawId || '(no id)');
+    const json = escapeHtml(JSON.stringify(item.body, null, 2));
+    const consume = publish && rawId
+      ? `<button type="button" class="consume-btn" data-id="${escapeHtml(rawId)}" onclick="consumeMsg(this)">Consume</button>`
+      : '';
+    return `<div class="msg"><div class="msg-top"><button type="button" class="msg-head" onclick="toggleMsg(this)"><span class="chev">▸</span><span>${escapeHtml(label)}</span></button>${consume}</div><div class="msg-body"><pre>${json}</pre></div></div>`;
+  }).join('')}</div>`;
+}
+
+function formatStamp(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+function toggleMsg(btn) {
+  const msg = btn.closest('.msg');
+  const open = msg.classList.toggle('open');
+  btn.querySelector('.chev').textContent = open ? '▾' : '▸';
+}
+
+async function consumeMsg(btn) {
+  const id = btn.dataset.id || '';
+  const metaEl = document.getElementById('meta');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/queue/consume', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({...queueBody(), correlation_id: id}),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      metaEl.textContent = data.detail || 'consume failed';
+      metaEl.className = 'status err';
+      btn.disabled = false;
+      return;
+    }
+    const row = btn.closest('.msg');
+    const list = row.parentElement;
+    row.remove();
+    const left = list.querySelectorAll('.msg').length;
+    metaEl.textContent = left ? `consumed · ${left} kaldı` : 'consumed';
+    metaEl.className = 'status ok';
+    if (!left) {
+      document.getElementById('result').innerHTML = '<div class="empty">Publish kuyruğunda gösterilecek mesaj kalmadı.</div>';
+    }
+  } catch (err) {
+    metaEl.textContent = String(err);
+    metaEl.className = 'status err';
+    btn.disabled = false;
+  }
+}
+
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
+}
+
+function queueBody() {
+  return {
+    pipeline: document.getElementById('pipeline').value.trim(),
+    service: document.getElementById('service').value.trim() || 'ms_flow',
+    env_prefix: ENV_PREFIX,
+  };
+}
+
+async function runQueue() {
+  const btn = document.getElementById('send');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  status.textContent = 'sending…';
+  status.className = 'status';
+  try {
+    const r = await fetch('/api/queue/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        ...queueBody(),
+        text: document.getElementById('text').value,
+        prod_name: document.getElementById('prod').value.trim() || 'careons',
+        dry_run: false,
+      }),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      status.textContent = `failed ${r.status}`;
+      status.className = 'status err';
+      showRaw('gönderilemedi', data, false);
+      return;
+    }
+    status.textContent = 'listen kuyruğunda';
+    status.className = 'status ok';
+    showRaw(data.run_id || '', data, true);
+  } catch (err) {
+    status.textContent = 'request failed';
+    status.className = 'status err';
+    showRaw('', {error: String(err)}, false);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function peek(which) {
+  const buttons = [document.getElementById('peek-publish'), document.getElementById('peek-listen')];
+  buttons.forEach(btn => { btn.disabled = true; });
+  try {
+    const r = await fetch('/api/queue/peek', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({...queueBody(), which, limit: 20}),
+    });
+    const data = await r.json();
+    if (!r.ok) {
+      showRaw(`${which} okunamadı`, data, false);
+      return;
+    }
+    showQueue(data);
+  } catch (err) {
+    showRaw('', {error: String(err)}, false);
+  } finally {
+    buttons.forEach(btn => { btn.disabled = false; });
+  }
+}
+
+renderNames();
+</script>
+</body>
+</html>
