@@ -123,6 +123,10 @@
       flex: 1; display: grid; grid-template-columns: 420px 1fr;
       gap: 12px; padding: 12px; min-height: 0;
     }
+    .split {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px; min-height: 0;
+    }
     .panel {
       background: rgba(18,18,22,.9);
       border: 1px solid var(--border);
@@ -137,7 +141,7 @@
       border-bottom: 1px solid var(--border);
     }
     .panel-title { font-size: .78rem; font-weight: 700; letter-spacing: .04em; }
-    .body { padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+    .body { flex: 1; padding: 14px 16px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
     .field { display: flex; flex-direction: column; gap: 6px; }
     .field label { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
     .field input, .field textarea {
@@ -147,6 +151,19 @@
       padding: 8px 10px; outline: none; width: 100%;
     }
     .field textarea { min-height: 180px; resize: vertical; line-height: 1.45; }
+    .field.grow { flex: 1; min-height: 0; }
+    .json-box {
+      flex: 1; min-height: 240px; position: relative;
+      border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden; background: var(--input);
+    }
+    .json-box:focus-within { border-color: rgba(255,107,53,.55); }
+    textarea#input, #json-editor {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      margin: 0; border: none; border-radius: 0; resize: none;
+      background: transparent; min-height: 0;
+    }
+    #json-editor { display: none; }
     .field input:focus, .field textarea:focus { border-color: rgba(255,107,53,.55); }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .send-btn {
@@ -238,7 +255,7 @@
   <div class="panel">
     <div class="panel-head">
       <span class="panel-title">Listen</span>
-      <span class="status" id="status">string in, list out</span>
+      <span class="status" id="status"></span>
     </div>
     <div class="body">
       <div class="row">
@@ -257,34 +274,117 @@
       </div>
       <div class="qname"><span>LISTEN</span><b id="listen-name">ms_flow_local_careons_take_plan_listen</b></div>
       <div class="qname"><span>PUBLISH</span><b id="publish-name">ms_flow_local_careons_take_plan_publish</b></div>
-      <p class="hint">Send yalnızca listen kuyruğuna yazar. Check mesajı silmez. Publish satırındaki Consume o kaydı kuyruktan alır. Env, worker’daki <code>RABBIT_ENV_PREFIX</code> ile aynı olmalı.</p>
-      <div class="field">
-        <label>Acties text</label>
-        <textarea id="text">De cliënt wil met de begeleider in gesprek over de vermeende diefstal. Cliënt geeft aan de post op 05-10-2026 op te ruimen. Er is een nieuwe afspraak ingepland voor het uitvoeren van een IQ-onderzoek. Vervolgens is er een huisbezoek met cliënt ingepland in de studio.</textarea>
+      <p class="hint">Send listen kuyruğuna yazar. Worker mesajı oradan alır; biten zarf publish kuyruğundadır. Check mesajı silmez, Consume alır. Env, worker’daki <code>RABBIT_ENV_PREFIX</code> ile aynı olmalı. Aşağıdaki nesne zarftaki <code>data.input</code> olur.</p>
+      <div class="field grow">
+        <label>Input</label>
+        <div class="json-box">
+          <textarea id="input" spellcheck="false">{}</textarea>
+          <div id="json-editor"></div>
+        </div>
       </div>
       <button class="send-btn" id="send" onclick="runQueue()">Send</button>
     </div>
   </div>
 
-  <div class="panel">
-    <div class="panel-head">
-      <span class="panel-title">Kuyruk</span>
-      <span class="status" id="meta"></span>
-    </div>
-    <div class="body">
-      <div class="row">
-        <button class="conn-btn" id="peek-publish" onclick="peek('publish')">Check Publish</button>
-        <button class="conn-btn" id="peek-listen" onclick="peek('listen')">Check Listen</button>
+  <div class="split">
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Request</span>
+        <span class="status" id="request-meta"></span>
       </div>
-      <div id="result">
-        <div class="empty">Send mesajı bırakır. Bakış, kuyrukta duranları gösterir.</div>
+      <div class="body" id="request">
+        <div class="empty">Gönderilen zarf burada durur.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Publish</span>
+        <button class="conn-btn" id="peek-publish" onclick="peekPublish()">Check</button>
+      </div>
+      <div class="body">
+        <span class="status" id="meta"></span>
+        <div id="result">
+          <div class="empty">Publish kuyruğundaki sonuçlar. Check mesajı silmez.</div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/editor/editor.main.css"/>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs/loader.js"></script>
 <script>
 let ENV_PREFIX = 'local';
+let monacoEditor = null;
+
+function inputText() {
+  return monacoEditor ? monacoEditor.getValue() : document.getElementById('input').value;
+}
+
+function initJsonEditor() {
+  if (typeof require !== 'function') return;
+  const base = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs';
+  window.MonacoEnvironment = {
+    getWorkerUrl(_id, label) {
+      const file = label === 'json'
+        ? 'language/json/json.worker.js'
+        : 'editor/editor.worker.js';
+      const src = `self.MonacoEnvironment={baseUrl:'${base}/'};importScripts('${base}/${file}');`;
+      return URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+    },
+  };
+  require.config({ paths: { vs: base } });
+  require(['vs/editor/editor.main'], () => {
+    monaco.editor.defineTheme('mysoly-json', {
+      base: 'vs-dark',
+      inherit: true,
+      rules: [],
+      colors: {
+        'editor.background': '#0c0c0f',
+        'editor.foreground': '#f4f4f5',
+        'editorLineNumber.foreground': '#6b6b78',
+        'editorLineNumber.activeForeground': '#f4f4f5',
+        'editor.selectionBackground': '#7cb4ff33',
+        'editorCursor.foreground': '#ffffff',
+        'editorBracketHighlight.foreground1': '#ffb089',
+        'editorBracketHighlight.foreground2': '#7cb4ff',
+        'editorBracketHighlight.foreground3': '#8ee4b0',
+      },
+    });
+    const box = document.getElementById('json-editor');
+    const ta = document.getElementById('input');
+    box.style.display = 'block';
+    ta.style.display = 'none';
+    monacoEditor = monaco.editor.create(box, {
+      value: ta.value,
+      language: 'json',
+      theme: 'mysoly-json',
+      fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+      fontSize: 13,
+      lineHeight: 22,
+      tabSize: 2,
+      insertSpaces: true,
+      detectIndentation: false,
+      automaticLayout: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      wordWrap: 'on',
+      formatOnPaste: true,
+      autoClosingBrackets: 'always',
+      autoClosingQuotes: 'always',
+      autoSurround: 'languageDefined',
+      autoIndent: 'full',
+      bracketPairColorization: { enabled: true },
+      matchBrackets: 'always',
+      guides: { bracketPairs: true, indentation: true },
+      padding: { top: 8, bottom: 8 },
+      smoothScrolling: true,
+      cursorBlinking: 'smooth',
+      renderLineHighlight: 'line',
+    });
+    monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => runQueue());
+  });
+}
 
 function setPrefix(btn) {
   ENV_PREFIX = btn.dataset.prefix;
@@ -329,9 +429,9 @@ async function connect() {
   }
 }
 
-function showRaw(title, raw, ok) {
-  const box = document.getElementById('result');
-  const metaEl = document.getElementById('meta');
+function showRequest(title, raw, ok) {
+  const box = document.getElementById('request');
+  const metaEl = document.getElementById('request-meta');
   metaEl.textContent = title || '';
   metaEl.className = 'status ' + (ok ? 'ok' : 'err');
   box.innerHTML = `<pre>${escapeHtml(JSON.stringify(raw, null, 2))}</pre>`;
@@ -341,24 +441,19 @@ function showQueue(data) {
   const box = document.getElementById('result');
   const metaEl = document.getElementById('meta');
   const count = data.message_count == null ? '?' : data.message_count;
-  metaEl.textContent = `${data.queue} · ${count} mesaj · ${data.shown} gösterildi`;
+  metaEl.textContent = `${count} mesaj · ${data.shown} gösterildi`;
   metaEl.className = 'status ok';
-  const messages = (data.messages || []).slice().reverse();
+  const messages = (data.messages || []).slice();
   if (!messages.length) {
-    box.innerHTML = '<div class="empty">Kuyruk boş.</div>';
+    box.innerHTML = '<div class="empty">Publish kuyruğu boş.</div>';
     return;
   }
-  const publish = data.which === 'publish';
-  if (publish) {
-    messages.sort((a, b) => (Date.parse(b.timestamp) || 0) - (Date.parse(a.timestamp) || 0));
-  }
+  messages.sort((a, b) => (Date.parse(b.timestamp) || 0) - (Date.parse(a.timestamp) || 0));
   box.innerHTML = `<div class="msgs">${messages.map(item => {
     const rawId = item.correlation_id || '';
-    const label = publish && item.timestamp
-      ? formatStamp(item.timestamp)
-      : (rawId || '(no id)');
+    const label = item.timestamp ? formatStamp(item.timestamp) : (rawId || '(no id)');
     const json = escapeHtml(JSON.stringify(item.body, null, 2));
-    const consume = publish && rawId
+    const consume = rawId
       ? `<button type="button" class="consume-btn" data-id="${escapeHtml(rawId)}" onclick="consumeMsg(this)">Consume</button>`
       : '';
     return `<div class="msg"><div class="msg-top"><button type="button" class="msg-head" onclick="toggleMsg(this)"><span class="chev">▸</span><span>${escapeHtml(label)}</span></button>${consume}</div><div class="msg-body"><pre>${json}</pre></div></div>`;
@@ -425,9 +520,32 @@ function queueBody() {
   };
 }
 
+function readInput() {
+  const raw = inputText().trim();
+  if (!raw) return {};
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new Error('Input geçerli JSON değil');
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Input bir JSON nesnesi olmalı');
+  }
+  return parsed;
+}
+
 async function runQueue() {
   const btn = document.getElementById('send');
   const status = document.getElementById('status');
+  let input;
+  try {
+    input = readInput();
+  } catch (err) {
+    status.textContent = err.message;
+    status.className = 'status err';
+    return;
+  }
   btn.disabled = true;
   status.textContent = 'sending…';
   status.className = 'status';
@@ -437,7 +555,7 @@ async function runQueue() {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({
         ...queueBody(),
-        text: document.getElementById('text').value,
+        input,
         prod_name: document.getElementById('prod').value.trim() || 'careons',
         dry_run: false,
       }),
@@ -446,44 +564,50 @@ async function runQueue() {
     if (!r.ok) {
       status.textContent = `failed ${r.status}`;
       status.className = 'status err';
-      showRaw('gönderilemedi', data, false);
+      showRequest('gönderilemedi', data, false);
       return;
     }
-    status.textContent = 'listen kuyruğunda';
+    status.textContent = 'gönderildi';
     status.className = 'status ok';
-    showRaw(data.run_id || '', data, true);
+    showRequest(data.run_id || '', data.envelope_sent || data, true);
   } catch (err) {
     status.textContent = 'request failed';
     status.className = 'status err';
-    showRaw('', {error: String(err)}, false);
+    showRequest('', {error: String(err)}, false);
   } finally {
     btn.disabled = false;
   }
 }
 
-async function peek(which) {
-  const buttons = [document.getElementById('peek-publish'), document.getElementById('peek-listen')];
-  buttons.forEach(btn => { btn.disabled = true; });
+async function peekPublish() {
+  const btn = document.getElementById('peek-publish');
+  const metaEl = document.getElementById('meta');
+  btn.disabled = true;
   try {
     const r = await fetch('/api/queue/peek', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({...queueBody(), which, limit: 20}),
+      body: JSON.stringify({...queueBody(), which: 'publish', limit: 20}),
     });
     const data = await r.json();
     if (!r.ok) {
-      showRaw(`${which} okunamadı`, data, false);
+      metaEl.textContent = 'okunamadı';
+      metaEl.className = 'status err';
+      document.getElementById('result').innerHTML = `<pre>${escapeHtml(JSON.stringify(data, null, 2))}</pre>`;
       return;
     }
     showQueue(data);
   } catch (err) {
-    showRaw('', {error: String(err)}, false);
+    metaEl.textContent = 'okunamadı';
+    metaEl.className = 'status err';
+    document.getElementById('result').innerHTML = `<pre>${escapeHtml(JSON.stringify({error: String(err)}, null, 2))}</pre>`;
   } finally {
-    buttons.forEach(btn => { btn.disabled = false; });
+    btn.disabled = false;
   }
 }
 
 renderNames();
+initJsonEditor();
 </script>
 </body>
 </html>

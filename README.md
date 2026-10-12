@@ -142,7 +142,7 @@ Uygulama **http://localhost:8005** adresinde açılır.
 |---|---|
 | http://localhost:8005/ | RPC konsolu (pipeline / chat / logs) |
 | http://localhost:8005/chat | Chat playground — gerçek sohbet, session ve vars |
-| http://localhost:8005/queues | Dedicated listen / publish — tek metin gönder, liste bekle |
+| http://localhost:8005/queues | Dedicated listen / publish — JSON `input` gönder, sonucu kuyrukta gör |
 | http://localhost:8005/docs | Swagger (FastAPI otomatik) |
 | http://localhost:8005/redoc | ReDoc |
 | http://localhost:8005/api/ping | Broker bağlantı kontrolü |
@@ -201,10 +201,10 @@ Dedicated pipeline kuyruğu. Ortak `pipeline` RPC’sinden ayrıdır.
 
 1. Üst çubuktan **Queues** veya http://localhost:8005/queues
 2. Env, worker’daki `RABBIT_ENV_PREFIX` ile aynı olsun (`local` → `ms_flow_local_{pipeline}_listen`)
-3. Pipeline varsayılan `careons_take_plan`. Acties tek bir metindir
+3. Pipeline adı serbesttir (varsayılan `careons_take_plan`). **Input** bir JSON nesnesidir ve listen zarfında `data.input` olarak gider
 4. **Send** metni yalnızca `{service}_{env}_{pipeline}_listen` kuyruğuna yazar. Publish kuyruğundan mesaj çekmez
-5. **Check Publish** / **Check Listen** kuyruktaki mesajları gösterir ve hepsini geri bırakır; ack edilmez. En yeni kayıt üsttedir. Publish satırında yayın saati görünür, Listen satırında kimlik görünür; satıra tıklayınca JSON açılır
-6. Publish satırındaki **Consume** yalnızca o mesajı ack eder ve kuyruktan düşürür. Listen satırında Consume yoktur
+5. Gönderilen zarf **Request** sütununda durur. Worker bitince sonuç **Publish** sütunundadır. Listen kuyruğu ekranda bakılmaz; worker mesajı oradan alır
+6. **Check** publish kuyruğundaki mesajları gösterir ve geri bırakır; ack edilmez. En yeni kayıt üsttedir. Satıra tıklayınca JSON açılır. **Consume** yalnızca o mesajı ack eder ve kuyruktan düşürür
 
 ---
 

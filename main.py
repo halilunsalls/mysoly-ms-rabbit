@@ -140,7 +140,7 @@ class SendRequest(BaseModel):
 
 class QueueRunRequest(BaseModel):
     pipeline: str = "careons_take_plan"
-    text: str = ""
+    input: dict[str, Any] | None = None
     prod_name: str = "careons"
     service: str = "ms_flow"
     env_prefix: str = ""
@@ -352,7 +352,7 @@ async def send_message(req: SendRequest):
 
 @app.post("/api/queue/run")
 async def queue_run(req: QueueRunRequest):
-    """Publish one actie string. Does not read the publish queue."""
+    """Publish one listen-queue job. ``input`` is sent as ``data.input``."""
     listen, publish = _dedicated_names(req.service, req.env_prefix, req.pipeline)
     run_id = str(uuid.uuid4())
     envelope = {
@@ -361,7 +361,7 @@ async def queue_run(req: QueueRunRequest):
             "prod_name": req.prod_name.strip() or "default",
             "run_id": run_id,
             "dry_run": req.dry_run,
-            "input": {"text": req.text},
+            "input": req.input if isinstance(req.input, dict) else {},
         },
     }
     body = json.dumps(envelope).encode()
